@@ -3,13 +3,22 @@
 import sys
 import re
 
+from typing import List
+from collections import namedtuple
+from operator import attrgetter
+
+StringVector = List[str]
+
+Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't'))
+
 regex = re.compile(
     r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
     r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
 )
 
+
 class AceFile(object):
-    def __init__(self, filename):
+    def __init__(self, filename:str):
         self.filename = filename
         self.file = open(filename)
         as_line = self.file.readline().strip().split()
@@ -27,10 +36,16 @@ class AceFile(object):
         output = self.buffer
         self.buffer = [line]
         return Contig(output)
+    
+    def readline(self):
+        return self.file.readline()
+
+    def close(self):
+        self.file.close()
 
 
 class Contig(object):
-    def __init__(self, lines):
+    def __init__(self, lines:StringVector):
         # just initializing values so editor doesn't complain
         self.length = 0
         self.nreads = 0
@@ -56,28 +71,46 @@ class Contig(object):
 
         self.lines = self.lines[first_empty+1:]
 
-        self.af = [
-            line for line in self.lines if line.startswith('AF')
+        names = [
+            line.split()[1] for line in self.lines if line.startswith('AF')
         ]
-        self.rd = [
-            line for line in self.lines if line.startswith('RD')
+
+        starts = [
+            int(line.split()[3]) for line in self.lines if line.startswith('AF')
         ]
+
+        lengths = [
+            int(line.split()[2]) for line in self.lines if line.startswith('RD')
+        ]
+
+        froms = [
+            int(line.split()[1]) for line in self.lines if line.startswith('QA')
+        ]
+
+        tos = [
+            int(line.split()[2]) for line in self.lines if line.startswith('QA')
+        ]
+
+        zipper = zip(names, lengths, starts, froms, tos)
+
+        self.reads = [
+            Read(
+                name=_id, length=l, start=s, f=f, t=t
+            ) for _id, l, s, f, t in zipper
+        ]
+
+        self.reads = sorted(self.reads, key=attrgetter('start'))
 
 
     @property
     def name(self):
         return f"CL{self.cluster}Contig{self.number}"
 
-    def __repr__(self):
-        return f"{self.name} with length {self.length} and {self.nreads} reads"
-
-    def __len__(self):
-        return self.length
-
     @property
     def padded_length(self):
         return self.length
     
+    @property
     def unpadded_length(self):
         return len(self.seq.replace("*", ""))
 
@@ -86,7 +119,13 @@ class Contig(object):
             idx for idx, ltr in enumerate(self.seq) if ltr == "*"
         ]
 
+    def __repr__(self):
+        return f"{self.name} with length {self.length} and {self.nreads} reads"
+
+    def __len__(self):
+        return self.length
+
 ace = AceFile(sys.argv[1])
 
-for x in range(10):
+for x in range(25):
     y = next(ace)
