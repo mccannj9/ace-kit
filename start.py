@@ -101,6 +101,10 @@ class Contig(object):
 
         self.reads = sorted(self.reads, key=attrgetter('start'))
 
+        self.min = self.reads[0].start
+        self.max = self.reads[-1].start + self.reads[-1].length - 1
+        self.shift = self.min + 1 if self.min < 1 else 0
+        self.assembly_len = self.shift + self.max if self.min < 1 else self.max
 
     @property
     def name(self):
@@ -120,7 +124,7 @@ class Contig(object):
         ]
 
     def __repr__(self):
-        return f"{self.name} with length {self.length} and {self.nreads} reads"
+        return f"id={self.name}: len={self.length}, nreads={self.nreads}"
 
     def __len__(self):
         return self.length
