@@ -7,6 +7,8 @@ from typing import List
 from collections import namedtuple
 from operator import attrgetter
 
+import numpy
+
 StringVector = List[str]
 
 Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't'))
@@ -105,6 +107,13 @@ class Contig(object):
         self.max = self.reads[-1].start + self.reads[-1].length - 1
         self.shift = self.min + 1 if self.min < 1 else 0
         self.assembly_len = self.shift + self.max if self.min < 1 else self.max
+
+        # sum over read positions
+        # use from-to, start and shift to calculate an array of zeros
+        # and ones for positions in the assembly
+        # add this to unmasked, invert and add inversion to masked
+        self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int)
+        self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int)
 
     @property
     def name(self):
