@@ -105,16 +105,26 @@ class Contig(object):
 
         self.min = self.reads[0].start
         self.max = self.reads[-1].start + self.reads[-1].length - 1
-        self.shift = self.min + 1 if self.min < 1 else 0
-        self.assembly_len = self.shift + self.max if self.min < 1 else self.max
+        self.shift = abs(self.min) if self.min < 1 else -1
+        self.assembly_len = self.shift + self.max + 1 if self.min < 1 else self.max
 
         # sum over read positions
         # use from-to, start and shift to calculate an array of zeros
         # and ones for positions in the assembly
         # add this to unmasked, invert and add inversion to masked
-        self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int)
-        self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int)
+        self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
+        self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
 
+        for r in self.reads:
+            unmasked = numpy.zeros(r.length).astype(bool)
+            unmasked[r.f-1:r.t-1] = True
+            masked = ~unmasked
+            begin = self.shift + r.start
+            end = self.shift + r.start + r.length
+            self.unmasked[begin: end] += unmasked
+            self.masked[begin:end] += masked
+
+    
     @property
     def name(self):
         return f"CL{self.cluster}Contig{self.number}"
