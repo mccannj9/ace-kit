@@ -8,6 +8,8 @@ from collections import namedtuple
 from operator import attrgetter
 
 import numpy
+import matplotlib.pyplot as plt
+plt.style.use('bmh')
 
 StringVector = List[str]
 
@@ -141,6 +143,21 @@ class Contig(object):
         return [
             idx for idx, ltr in enumerate(self.seq) if ltr == "*"
         ]
+    
+    def plot_profile(self):
+        fig, ax = plt.subplots(2, sharex=True, sharey=True)
+        fig.suptitle(f"{self.name} masking pattern")
+        ax[0].step(
+            numpy.arange(self.min, self.max+1), self.unmasked, c='firebrick'
+        )
+        ax[0].set_ylabel(f'Unmasked Sites')
+        ax[1].step(
+            numpy.arange(self.min, self.max+1), self.masked, c='steelblue'
+        )
+        ax[1].set_xlabel(f'Position in {self.name} assembly')
+        ax[1].set_ylabel(f'Masked Sites')
+        return fig
+
 
     def __repr__(self):
         return f"id={self.name}: len={self.length}, nreads={self.nreads}"
