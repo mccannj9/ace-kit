@@ -34,9 +34,17 @@ class AceFile(object):
 
     def __next__(self):
         line = self.file.readline().strip()
+        nlines = 1
         while not(line.startswith("CO")):
             self.buffer.append(line)
             line = self.file.readline().strip()
+            if nlines > 1:
+                last_1, last_2 = self.buffer[-1], self.buffer[-2]
+                if not(last_1) and not(last_2):
+                    # removes the last extra line
+                    self.buffer.pop()
+                    break
+            nlines += 1
         output = self.buffer
         self.buffer = [line]
         return Contig(output)

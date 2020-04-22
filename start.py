@@ -33,7 +33,7 @@ from ace import AceFile, Contig
 
 acefile = AceFile(sys.argv[1])
 
-for x in range(25):
+for x in range(59):
     y = next(acefile)
 
 # beginning preliminary analysis of this contig
