@@ -21,6 +21,25 @@ regex = re.compile(
 )
 
 
+def window(
+    array:numpy.ndarray, window:int,
+    shift:int=1, copy:bool=False
+):
+    shape = (array.size - window + 1, window)
+    stride = array.strides * 2
+    
+    view = as_strided(
+        array, strides=stride, shape=shape
+    )[0::shift]
+
+    if copy:
+        return view.copy()
+
+    else:
+        return view
+
+
+
 class AceFile(object):
     def __init__(self, filename:str):
         self.filename = filename

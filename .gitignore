@@ -126,3 +126,4 @@ dmypy.json
 .vscode/settings.json
 *.ipynb
 *.pl
+*.png
