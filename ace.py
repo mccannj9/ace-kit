@@ -179,15 +179,42 @@ class Contig(object):
         fig.suptitle(f"{self.name} masking pattern")
         ax[0].step(
             numpy.arange(self.min, self.max+1), self.unmasked, c='firebrick'
-        )
-        ax[0].set_ylabel('Unmasked Sites')
-        ax[1].step(
-            numpy.arange(self.min, self.max+1), self.masked, c='steelblue'
-        )
-        ax[1].set_xlabel('Position')
-        ax[1].set_ylabel('Masked Sites')
-        return fig
+    def plot_profile(self, ax, window_size=1, shift=1):
+        if window_size > 1:
+            unmasked_data = window(self.unmasked, window=window_size, shift=shift).mean(axis=1)
+            masked_data = window(self.masked, window=window_size, shift=shift).mean(axis=1)
+        else:
+            unmasked_data = self.unmasked
+            masked_data = self.masked
+        depth =  unmasked_data + masked_data
 
+        ax.set_ylabel('No. of Sites')
+
+        ax.set_xlabel(f'Position, Window Size = {window_size}')
+        xaxis = numpy.arange(self.min, self.max-window_size+2)
+        artist1 = ax.step(
+            xaxis, unmasked_data, c='firebrick', label='Unmasked'
+        )
+        artist2 = ax.step(
+            xaxis, masked_data, c='steelblue', label='Masked'
+        )
+        artist3 = ax.step(
+            xaxis, depth, c='seagreen', label='Depth'
+        )
+        ax.legend()
+        return artist1, artist2, artist3
+    
+    def generate_figure(self, fs=(6, 9), filename=None, **kwargs):
+        fig, ax = pyplot.subplots(3, figsize=fs)
+        self.plot_profile(ax[0])
+        self.plot_profile(ax[1], window_size=3)
+        self.plot_profile(ax[2], window_size=5)
+        fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        if filename:
+            fig.savefig(filename, **kwargs)
+        return fig
+        
 
     def __repr__(self):
         return f"id={self.name}: len={self.length}, nreads={self.nreads}"
