@@ -7,6 +7,7 @@ from collections import namedtuple
 from operator import attrgetter
 
 import numpy
+from numpy.lib.stride_tricks import as_strided
 
 from matplotlib import pyplot
 pyplot.style.use('bmh')
@@ -19,6 +20,10 @@ regex = re.compile(
     r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
     r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
 )
+
+
+def compute_end_pos(read):
+    return read.start + read.length
 
 
 def window(
@@ -133,10 +138,14 @@ class Contig(object):
             ) for _id, l, s, f, t in zipper
         ]
 
-        self.reads = sorted(self.reads, key=attrgetter('start'))
+        # have to sort by starting and ending position
+        # sometimes (with gaps) sorting gives different results
+        reads_for_min = sorted(self.reads, key=attrgetter('start'))
+        reads_for_max = sorted(self.reads, key=compute_end_pos)
 
-        self.min = self.reads[0].start
-        self.max = self.reads[-1].start + self.reads[-1].length - 1
+        # self.min = self.reads[0].start
+        self.min = reads_for_min[0].start
+        self.max = reads_for_max[-1].start + reads_for_max[-1].length - 1
         self.shift = abs(self.min) if self.min < 1 else -1
         self.assembly_len = self.shift + self.max + 1 if self.min < 1 else self.max
 
@@ -146,7 +155,6 @@ class Contig(object):
         # add this to unmasked, invert and add inversion to masked
         self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
         self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
-
         for r in self.reads:
             unmasked = numpy.zeros(r.length).astype(bool)
             unmasked[r.f-1:r.t-1] = True
@@ -155,6 +163,8 @@ class Contig(object):
             end = self.shift + r.start + r.length
             self.unmasked[begin: end] += unmasked
             self.masked[begin:end] += masked
+        
+        self.average_rd = (self.unmasked + self.masked).mean()
 
     
     @property

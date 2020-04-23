@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import os
 import sys
 
 import numpy
@@ -29,12 +30,17 @@ def window(
         return view
 
 
-from ace import AceFile, Contig
+from ace import AceFile, Contig, window
 
 acefile = AceFile(sys.argv[1])
 
-for x in range(59):
+for x in range(acefile.ncontigs):
     y = next(acefile)
+    if y.nreads / acefile.nreads > 0.01:
+        print(y.name, y.average_rd)
+        fn = os.path.splitext(sys.argv[1])[0] + f"_{y.name}.png"
+        y.generate_figure(filename=fn)
+
 
 # beginning preliminary analysis of this contig
 # should be the one from VUNXX_CL0260, contig25
