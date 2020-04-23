@@ -94,15 +94,28 @@ class SwitchpointFinder:
         # defaults to no overlap
         if shift is None:
             shift = self.window_size
-        u = window(contig.unmasked, self.window_size, shift).mean(axis=1)
-        m = window(contig.masked, self.window_size, shift).mean(axis=1)
+        u = window(contig.unmasked, self.window_size, shift=shift).mean(axis=1)
+        m = window(contig.masked, self.window_size, shift=shift).mean(axis=1)
         d = u + m
+        d_f = d > self.min_site_depth
+        m_f = m > self.min_masked_reads
+        # u *= d_f * m_f
+        # m *= d_f * m_f
+
 
         mask_ratios = m / (u + m)
-        mr_win1 = mask_ratios[1:]
-        mr_win2 = mask_ratios[:-1]
+        mask_ratios *= d_f * m_f
+        mr_win2 = mask_ratios[1:]
+        mr_win1 = mask_ratios[:-1]
+        left = (
+            mr_win1 > self.min_fold_diff * mr_win2
+        ).argmax() * (self.window_size + 1)
 
-        return contig
+        mr_win1, mr_win2 = mr_win2[::-1], mr_win1[::-1]
+        right = -(
+            mr_win1 > self.min_fold_diff * mr_win2
+        ).argmax() * (self.window_size + 1) - 1
+        return left, right
 
 
 class AceFile(object):
@@ -279,6 +292,14 @@ class Contig(object):
         if filename:
             fig.savefig(filename, **kwargs)
         return fig
+    
+    def add_candidate_switchpoints_to_fig(self, fig, candidates):
+        b, e = candidates
+        # gets max depth for drawing the line
+        ymax = (self.unmasked + self.masked).max()
+        for i, ax in enumerate(fig.axes):
+            ax.vlines(self.min + b, 0, ymax, linestyles='dotted')
+            ax.vlines(self.max + e - (2*i + 1), 0, ymax, linestyles='dotted')
         
 
     def __repr__(self):

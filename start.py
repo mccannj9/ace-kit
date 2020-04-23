@@ -5,42 +5,29 @@ import sys
 
 import numpy
 from numpy.lib.stride_tricks import as_strided
+from matplotlib import pyplot
 
 window_size = 7
 min_site_dp = 10
 min_out_masked = 10
 fold_diff = 5
 
+from ace import AceFile, Contig, window, SwitchpointFinder
 
-def window(
-    array:numpy.ndarray, window:int,
-    shift:int=1, copy:bool=False
-):
-    shape = (array.size - window + 1, window)
-    stride = array.strides * 2
-    
-    view = as_strided(
-        array, strides=stride, shape=shape
-    )[0::shift]
-
-    if copy:
-        return view.copy()
-
-    else:
-        return view
-
-
-from ace import AceFile, Contig, window
-
-acefile = AceFile(sys.argv[1])
+# acefile = AceFile(sys.argv[1])
+finder = SwitchpointFinder(sys.argv[1], "")
+acefile = finder.acefile
 
 for x in range(acefile.ncontigs):
     y = next(acefile)
     if y.nreads / acefile.nreads > 0.01:
         print(y.name, y.average_rd)
         fn = os.path.splitext(sys.argv[1])[0] + f"_{y.name}.png"
-        y.generate_figure(filename=fn)
-
+        b, e = finder.find_candidates(y)
+        fig = y.generate_figure()
+        y.add_candidate_switchpoints_to_fig(fig, (b, e))
+        fig.savefig(fn)
+        pyplot.close(fig)
 
 # beginning preliminary analysis of this contig
 # should be the one from VUNXX_CL0260, contig25
