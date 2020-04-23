@@ -184,11 +184,6 @@ class Contig(object):
             idx for idx, ltr in enumerate(self.seq) if ltr == "*"
         ]
     
-    def plot_profile(self):
-        fig, ax = pyplot.subplots(2, sharex=True, sharey=True)
-        fig.suptitle(f"{self.name} masking pattern")
-        ax[0].step(
-            numpy.arange(self.min, self.max+1), self.unmasked, c='firebrick'
     def plot_profile(self, ax, window_size=1, shift=1):
         if window_size > 1:
             unmasked_data = window(self.unmasked, window=window_size, shift=shift).mean(axis=1)
