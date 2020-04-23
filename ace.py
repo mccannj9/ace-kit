@@ -44,6 +44,66 @@ def window(
         return view
 
 
+"""
+args:
+-i input filename
+-o output filename
+-w window size = 7
+-d minimum site depth = 10
+    actual depth (both windows)
+-m minimum number masked reads
+    outside site (window 1)
+-f minimum fold difference of masked proportion = 3
+    i.e. window_1 / window_2 > 3
+
+-x max fold difference between depth in "site" and masked depth "out" = 10
+-e extract region (length) = 30
+"""
+
+default_kwargs = {
+    'window_size': 7,
+    'min_site_depth': 10,
+    'min_masked_reads': 10,
+    'min_fold_diff': 3,
+    'max_fold_diff': 10
+}
+
+class SwitchpointFinder:
+    def __init__(
+        self, input_fn, output_fn, window_size=7, min_site_depth=10,
+        min_masked_reads=10, min_fold_diff=3, max_fold_diff=10
+    ):
+
+        self.acefile = AceFile(input_fn)
+        self.window_size = window_size
+        self.min_site_depth = min_site_depth
+        self.min_masked_reads = min_masked_reads
+        self.min_fold_diff = min_fold_diff
+        self.max_fold_diff = max_fold_diff
+    
+    def fit(self):
+        contig_dict = {}
+
+        for x in range(self.acefile.ncontigs):
+            ctg = next(self.acefile)
+            contig_dict[ctg.name] = self.find_candidates(Contig(ctg))
+
+        return contig_dict
+    
+    def find_candidates(self, contig, shift=None):
+        # defaults to no overlap
+        if shift is None:
+            shift = self.window_size
+        u = window(contig.unmasked, self.window_size, shift).mean(axis=1)
+        m = window(contig.masked, self.window_size, shift).mean(axis=1)
+        d = u + m
+
+        mask_ratios = m / (u + m)
+        mr_win1 = mask_ratios[1:]
+        mr_win2 = mask_ratios[:-1]
+
+        return contig
+
 
 class AceFile(object):
     def __init__(self, filename:str):
