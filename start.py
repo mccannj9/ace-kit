@@ -18,14 +18,31 @@ from ace import AceFile, Contig, window, SwitchpointFinder
 finder = SwitchpointFinder(sys.argv[1], "")
 acefile = finder.acefile
 
+# for x in range(acefile.ncontigs):
+#     y = next(acefile)
+#     if y.nreads / acefile.nreads > 0.01:
+#         print(y.name, y.average_rd)
+#         fn = os.path.splitext(sys.argv[1])[0] + f"_{y.name}.png"
+#         b, e = finder.find_candidates(y)
+#         fig = y.generate_figure()
+#         y.add_candidate_switchpoints_to_fig(fig, (b, e))
+#         fig.savefig(fn)
+#         pyplot.close(fig)
+
+
 for x in range(acefile.ncontigs):
     y = next(acefile)
     if y.nreads / acefile.nreads > 0.01:
         print(y.name, y.average_rd)
         fn = os.path.splitext(sys.argv[1])[0] + f"_{y.name}.png"
-        b, e = finder.find_candidates(y)
+        candidates = finder.find_new_candidates(y)
         fig = y.generate_figure()
-        y.add_candidate_switchpoints_to_fig(fig, (b, e))
+        # y.add_candidate_switchpoints_to_fig(fig, (b, e))
+        max_depth = (y.unmasked + y.masked).max()
+        for i, x in enumerate(candidates):
+            if x:
+                for j, ax in enumerate(fig.axes):
+                    ax.vlines(y.min + i, 0, max_depth, linestyles='dotted')
         fig.savefig(fn)
         pyplot.close(fig)
 

@@ -65,18 +65,20 @@ default_kwargs = {
     'min_site_depth': 10,
     'min_masked_reads': 10,
     'min_fold_diff': 3,
-    'max_fold_diff': 10
+    'max_fold_diff': 10,
+    'max_depth_prop': 0.2
 }
 
 class SwitchpointFinder:
     def __init__(
-        self, input_fn, output_fn, window_size=7, min_site_depth=10,
-        min_masked_reads=10, min_fold_diff=3, max_fold_diff=10
+        self, input_fn, output_fn, window_size=7, min_site_depth_prop=0.1,
+        min_depth=10, min_masked_reads=0.4, min_fold_diff=3, max_fold_diff=10
     ):
 
         self.acefile = AceFile(input_fn)
         self.window_size = window_size
-        self.min_site_depth = min_site_depth
+        self.min_depth = min_depth
+        self.min_site_depth_prop = min_site_depth_prop
         self.min_masked_reads = min_masked_reads
         self.min_fold_diff = min_fold_diff
         self.max_fold_diff = max_fold_diff
@@ -84,7 +86,7 @@ class SwitchpointFinder:
     def fit(self):
         contig_dict = {}
 
-        for x in range(self.acefile.ncontigs):
+        for _ in range(self.acefile.ncontigs):
             ctg = next(self.acefile)
             contig_dict[ctg.name] = self.find_candidates(Contig(ctg))
 
@@ -117,6 +119,19 @@ class SwitchpointFinder:
         ).argmax() * (self.window_size + 1) - 1
         return left, right
 
+
+    def find_new_candidates(self, contig):
+        depth = contig.unmasked + contig.masked
+        # pd_mask = depth / depth.max() > self.min_site_depth_prop
+        dmask = depth > self.min_depth
+        pmasked = contig.masked / depth > self.min_masked_reads
+        # mask = pd_mask * dmask * pmasked
+        mask = dmask * pmasked
+        diff = contig.unmasked - contig.masked
+        s = numpy.sign(diff)
+        sc = ((numpy.roll(s, 1) - s) != 0).astype(int)
+        sc *= mask
+        return sc
 
 class AceFile(object):
     def __init__(self, filename:str):
@@ -228,6 +243,7 @@ class Contig(object):
         # add this to unmasked, invert and add inversion to masked
         self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
         self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
+        self.depth = self.unmasked + self.masked
         for r in self.reads:
             unmasked = numpy.zeros(r.length).astype(bool)
             unmasked[r.f-1:r.t-1] = True
