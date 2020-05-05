@@ -44,31 +44,6 @@ def window(
         return view
 
 
-"""
-args:
--i input filename
--o output filename
--w window size = 7
--d minimum site depth = 10
-    actual depth (both windows)
--m minimum number masked reads
-    outside site (window 1)
--f minimum fold difference of masked proportion = 3
-    i.e. window_1 / window_2 > 3
-
--x max fold difference between depth in "site" and masked depth "out" = 10
--e extract region (length) = 30
-"""
-
-default_kwargs = {
-    'window_size': 7,
-    'min_site_depth': 10,
-    'min_masked_reads': 10,
-    'min_fold_diff': 3,
-    'max_fold_diff': 10,
-    'max_depth_prop': 0.2
-}
-
 class SwitchpointFinder:
     def __init__(
         self, input_fn, output_fn, window_size=7, min_site_depth_prop=0.1,
@@ -99,7 +74,7 @@ class SwitchpointFinder:
         u = window(contig.unmasked, self.window_size, shift=shift).mean(axis=1)
         m = window(contig.masked, self.window_size, shift=shift).mean(axis=1)
         d = u + m
-        d_f = d > self.min_site_depth
+        d_f = d > self.min_site_depth_prop
         m_f = m > self.min_masked_reads
         # u *= d_f * m_f
         # m *= d_f * m_f
@@ -120,18 +95,32 @@ class SwitchpointFinder:
         return left, right
 
 
-    def find_new_candidates(self, contig):
-        depth = contig.unmasked + contig.masked
-        # pd_mask = depth / depth.max() > self.min_site_depth_prop
-        dmask = depth > self.min_depth
-        pmasked = contig.masked / depth > self.min_masked_reads
-        # mask = pd_mask * dmask * pmasked
-        mask = dmask * pmasked
+    def find_new_candidates(self, contig, ws=7):
+        dmask = contig.depth > self.min_depth
         diff = contig.unmasked - contig.masked
         s = numpy.sign(diff)
         sc = ((numpy.roll(s, 1) - s) != 0).astype(int)
-        sc *= mask
-        return sc
+        side = ws // 2
+        derivatives = numpy.zeros(shape=diff.shape, dtype=float)
+        for c in numpy.flatnonzero(sc):
+            if (c-side < 0) or (c + side + 1 > contig.depth.size):
+                sc[c] = 0
+            else:
+                wdiff = contig.unmasked[c-side:c+side+1] - contig.masked[c-side:c+side+1]
+                wdepth = contig.depth[c-side:c+side+1].mean()
+                derivative = (wdiff[-1] - wdiff[0]) / ws
+                derivatives[c] = derivative
+                if abs(derivative) / wdepth < 0.10:
+                    sc[c] = 0
+        
+        # get the idx of min and max of derivative
+        min_der_idx = derivatives.argmin()
+        max_der_idx = derivatives.argmax()
+        derivatives_mask = numpy.zeros(shape=derivatives.shape)
+        derivatives_mask[min_der_idx] = 1
+        derivatives_mask[max_der_idx] = 1
+
+        return sc * dmask * derivatives_mask, derivatives
 
 class AceFile(object):
     def __init__(self, filename:str):
@@ -160,7 +149,7 @@ class AceFile(object):
         output = self.buffer
         self.buffer = [line]
         return Contig(output)
-
+    
     def __repr__(self):
         return f"{self.filename}: {self.ncontigs}, {self.nreads}"
     
@@ -243,7 +232,6 @@ class Contig(object):
         # add this to unmasked, invert and add inversion to masked
         self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
         self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
-        self.depth = self.unmasked + self.masked
         for r in self.reads:
             unmasked = numpy.zeros(r.length).astype(bool)
             unmasked[r.f-1:r.t-1] = True
@@ -253,7 +241,8 @@ class Contig(object):
             self.unmasked[begin: end] += unmasked
             self.masked[begin:end] += masked
         
-        self.average_rd = (self.unmasked + self.masked).mean()
+        self.depth = self.unmasked + self.masked
+        self.average_rd = self.depth.mean()
 
     
     @property
@@ -298,13 +287,13 @@ class Contig(object):
         ax.legend()
         return artist1, artist2, artist3
     
-    def generate_figure(self, fs=(6, 9), filename=None, **kwargs):
-        fig, ax = pyplot.subplots(3, figsize=fs)
-        self.plot_profile(ax[0])
-        self.plot_profile(ax[1], window_size=3)
-        self.plot_profile(ax[2], window_size=5)
+    def generate_figure(self, fs=(6, 4), filename=None, **kwargs):
+        fig, ax = pyplot.subplots(1, figsize=fs)
+        self.plot_profile(ax)
+        # self.plot_profile(ax[1], window_size=3)
+        # self.plot_profile(ax[2], window_size=5)
         fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         if filename:
             fig.savefig(filename, **kwargs)
         return fig
