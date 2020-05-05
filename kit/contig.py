@@ -83,7 +83,6 @@ class Contig(object):
         reads_for_min = sorted(self.reads, key=attrgetter('start'))
         reads_for_max = sorted(self.reads, key=compute_end_pos)
 
-        # self.min = self.reads[0].start
         self.min = reads_for_min[0].start
         self.max = reads_for_max[-1].start + reads_for_max[-1].length - 1
         self.shift = abs(self.min) if self.min < 1 else -1

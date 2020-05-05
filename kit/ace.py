@@ -1,6 +1,7 @@
 
 from kit.contig import Contig
 
+
 class AceFile(object):
     def __init__(self, filename:str):
         self.filename = filename

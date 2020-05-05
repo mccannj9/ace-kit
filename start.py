@@ -10,10 +10,12 @@ from kit.finder import SwitchpointFinder
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-a', '--acefile', required=True)
+
 parser.add_argument('-o', '--output-dir', required=False, default="./", type=str)
 parser.add_argument('-w', '--window-size', required=False, default=7, type=int)
 parser.add_argument('-d', '--min-depth', required=False, default=10, type=int)
 parser.add_argument('-r', '--min-read-prop', required=False, default=0.1, type=float)
+
 args = parser.parse_args()
 
 try:
