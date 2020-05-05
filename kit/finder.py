@@ -1,15 +1,19 @@
 
+from collections import namedtuple
 
 import numpy
+
+from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.contig import Contig
 from kit.utils import window
 
+Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
 
 class SwitchpointFinder:
     def __init__(
-        self, input_fn, output_fn, window_size=7, min_site_depth_prop=0.1,
+        self, input_fn, outdir="./", window_size=7, min_site_depth_prop=0.1,
         min_depth=10, min_masked_reads=0.4, min_fold_diff=3, max_fold_diff=10
     ):
 
@@ -20,16 +24,44 @@ class SwitchpointFinder:
         self.min_masked_reads = min_masked_reads
         self.min_fold_diff = min_fold_diff
         self.max_fold_diff = max_fold_diff
+        self.outdir = outdir
+        self.fasta = open(f"{outdir}/results.fas", "w")
     
-    def fit(self):
+    def fit(self, min_read_prop=0.01):
         contig_dict = {}
 
         for _ in range(self.acefile.ncontigs):
             ctg = next(self.acefile)
-            contig_dict[ctg.name] = self.find_candidates(Contig(ctg))
-
+            if ctg.nreads / self.acefile.nreads > min_read_prop:
+                cands, derivs = self.find_candidates(ctg)
+                contig_dict[ctg.name] = Result(ctg, cands, derivs)
+                self.write_and_plot_results(contig_dict[ctg.name])
+        
+        self.fasta.close()
         return contig_dict
     
+    def write_and_plot_results(self, result:Result):
+        contig = result.contig
+        fig = contig.generate_figure()
+        max_dp = contig.depth.max()
+
+        for i in numpy.flatnonzero(result.candidates):
+            dx = result.derivatives[i]
+            pos = i - contig.shift
+
+            if dx > 0:
+                seq = contig.seq[pos:pos+30].replace("*", "-")
+            else:
+                seq = contig.seq[pos+1-30:pos+1].replace("*", "-")
+            
+            print(f">{contig.name}_{i}_{pos}_{round(dx)}\n{seq}", file=self.fasta)
+
+            for _, ax in enumerate(fig.axes):
+                ax.vlines(contig.min + i, 0, max_dp, linestyles='dotted')
+
+        fig.savefig(f"{self.outdir}/{contig.name}.png")
+        pyplot.close(fig)
+
     def old_find_candidates(self, contig, shift=None):
         # defaults to no overlap
         if shift is None:
