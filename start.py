@@ -3,18 +3,10 @@
 import os
 import sys
 
-import numpy
-from numpy.lib.stride_tricks import as_strided
 from matplotlib import pyplot
 
-window_size = 7
-min_site_dp = 10
-min_out_masked = 10
-fold_diff = 5
+from kit.finder import SwitchpointFinder
 
-from ace import AceFile, Contig, window, SwitchpointFinder
-
-# acefile = AceFile(sys.argv[1])
 finder = SwitchpointFinder(sys.argv[1], "")
 acefile = finder.acefile
 
@@ -22,7 +14,7 @@ for x in range(acefile.ncontigs):
     y = next(acefile)
     if y.nreads / acefile.nreads > 0.01:
         fn = os.path.splitext(sys.argv[1])[0] + f"_{y.name}.png"
-        candidates, derivatives = finder.find_new_candidates(y)
+        candidates, derivatives = finder.find_candidates(y)
         fig = y.generate_figure()
         max_depth = (y.unmasked + y.masked).max()
 

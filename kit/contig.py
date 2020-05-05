@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 
 import re
 
@@ -7,9 +6,11 @@ from collections import namedtuple
 from operator import attrgetter
 
 import numpy
-from numpy.lib.stride_tricks import as_strided
 
 from matplotlib import pyplot
+
+from kit.utils import compute_end_pos, window
+
 pyplot.style.use('bmh')
 
 StringVector = List[str]
@@ -20,144 +21,6 @@ regex = re.compile(
     r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
     r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
 )
-
-
-def compute_end_pos(read):
-    return read.start + read.length
-
-
-def window(
-    array:numpy.ndarray, window:int,
-    shift:int=1, copy:bool=False
-):
-    shape = (array.size - window + 1, window)
-    stride = array.strides * 2
-    
-    view = as_strided(
-        array, strides=stride, shape=shape
-    )[0::shift]
-
-    if copy:
-        return view.copy()
-
-    else:
-        return view
-
-
-class SwitchpointFinder:
-    def __init__(
-        self, input_fn, output_fn, window_size=7, min_site_depth_prop=0.1,
-        min_depth=10, min_masked_reads=0.4, min_fold_diff=3, max_fold_diff=10
-    ):
-
-        self.acefile = AceFile(input_fn)
-        self.window_size = window_size
-        self.min_depth = min_depth
-        self.min_site_depth_prop = min_site_depth_prop
-        self.min_masked_reads = min_masked_reads
-        self.min_fold_diff = min_fold_diff
-        self.max_fold_diff = max_fold_diff
-    
-    def fit(self):
-        contig_dict = {}
-
-        for _ in range(self.acefile.ncontigs):
-            ctg = next(self.acefile)
-            contig_dict[ctg.name] = self.find_candidates(Contig(ctg))
-
-        return contig_dict
-    
-    def find_candidates(self, contig, shift=None):
-        # defaults to no overlap
-        if shift is None:
-            shift = self.window_size
-        u = window(contig.unmasked, self.window_size, shift=shift).mean(axis=1)
-        m = window(contig.masked, self.window_size, shift=shift).mean(axis=1)
-        d = u + m
-        d_f = d > self.min_site_depth_prop
-        m_f = m > self.min_masked_reads
-        # u *= d_f * m_f
-        # m *= d_f * m_f
-
-
-        mask_ratios = m / (u + m)
-        mask_ratios *= d_f * m_f
-        mr_win2 = mask_ratios[1:]
-        mr_win1 = mask_ratios[:-1]
-        left = (
-            mr_win1 > self.min_fold_diff * mr_win2
-        ).argmax() * (self.window_size + 1)
-
-        mr_win1, mr_win2 = mr_win2[::-1], mr_win1[::-1]
-        right = -(
-            mr_win1 > self.min_fold_diff * mr_win2
-        ).argmax() * (self.window_size + 1) - 1
-        return left, right
-
-
-    def find_new_candidates(self, contig, ws=7):
-        dmask = contig.depth > self.min_depth
-        diff = contig.unmasked - contig.masked
-        s = numpy.sign(diff)
-        sc = ((numpy.roll(s, 1) - s) != 0).astype(int)
-        side = ws // 2
-        derivatives = numpy.zeros(shape=diff.shape, dtype=float)
-        for c in numpy.flatnonzero(sc):
-            if (c-side < 0) or (c + side + 1 > contig.depth.size):
-                sc[c] = 0
-            else:
-                wdiff = contig.unmasked[c-side:c+side+1] - contig.masked[c-side:c+side+1]
-                wdepth = contig.depth[c-side:c+side+1].mean()
-                derivative = (wdiff[-1] - wdiff[0]) / ws
-                derivatives[c] = derivative
-                if abs(derivative) / wdepth < 0.10:
-                    sc[c] = 0
-        
-        # get the idx of min and max of derivative
-        min_der_idx = derivatives.argmin()
-        max_der_idx = derivatives.argmax()
-        derivatives_mask = numpy.zeros(shape=derivatives.shape)
-        derivatives_mask[min_der_idx] = 1
-        derivatives_mask[max_der_idx] = 1
-
-        return sc * dmask * derivatives_mask, derivatives
-
-class AceFile(object):
-    def __init__(self, filename:str):
-        self.filename = filename
-        self.file = open(filename)
-        as_line = self.file.readline().strip().split()
-        self.ncontigs, self.nreads = int(as_line[1]), int(as_line[2])
-        
-        # read until first CO line
-        self.file.readline()
-        self.buffer = [self.file.readline().strip()]
-
-    def __next__(self):
-        line = self.file.readline().strip()
-        nlines = 1
-        while not(line.startswith("CO")):
-            self.buffer.append(line)
-            line = self.file.readline().strip()
-            if nlines > 1:
-                last_1, last_2 = self.buffer[-1], self.buffer[-2]
-                if not(last_1) and not(last_2):
-                    # removes the last extra line
-                    self.buffer.pop()
-                    break
-            nlines += 1
-        output = self.buffer
-        self.buffer = [line]
-        return Contig(output)
-    
-    def __repr__(self):
-        return f"{self.filename}: {self.ncontigs}, {self.nreads}"
-    
-    def readline(self):
-        return self.file.readline()
-
-    def close(self):
-        self.file.close()
 
 
 class Contig(object):
