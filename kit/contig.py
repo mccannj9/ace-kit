@@ -33,12 +33,12 @@ class Contig(object):
 
         intro = lines[0]
         self.lines = lines
-        
+
         matches = regex.match(intro).groupdict()
         for m in matches:
             setattr(self, m, int(matches[m]))
 
-        first_empty = self.lines.index('')        
+        first_empty = self.lines.index('')
         self.seq = "".join(self.lines[1:first_empty])
         self.lines = self.lines[first_empty+1:]
 
@@ -102,11 +102,10 @@ class Contig(object):
             end = self.shift + r.start + r.length
             self.unmasked[begin: end] += unmasked
             self.masked[begin:end] += masked
-        
+
         self.depth = self.unmasked + self.masked
         self.average_rd = self.depth.mean()
 
-    
     @property
     def name(self):
         return f"CL{self.cluster}Contig{self.number}"
@@ -114,7 +113,7 @@ class Contig(object):
     @property
     def padded_length(self):
         return self.length
-    
+
     @property
     def unpadded_length(self):
         return len(self.seq.replace("*", ""))
@@ -123,7 +122,7 @@ class Contig(object):
         return [
             idx for idx, ltr in enumerate(self.seq) if ltr == "*"
         ]
-    
+
     def plot_profile(self, ax, window_size=1, shift=1):
         if window_size > 1:
             unmasked_data = window(self.unmasked, window=window_size, shift=shift).mean(axis=1)
@@ -148,7 +147,7 @@ class Contig(object):
         )
         ax.legend()
         return artist1, artist2, artist3
-    
+
     def generate_figure(self, fs=(6, 4), filename=None, **kwargs):
         fig, ax = pyplot.subplots(1, figsize=fs)
         self.plot_profile(ax)
@@ -159,7 +158,7 @@ class Contig(object):
         if filename:
             fig.savefig(filename, **kwargs)
         return fig
-    
+
     def add_candidate_switchpoints_to_fig(self, fig, candidates):
         b, e = candidates
         # gets max depth for drawing the line
@@ -167,7 +166,6 @@ class Contig(object):
         for i, ax in enumerate(fig.axes):
             ax.vlines(self.min + b, 0, ymax, linestyles='dotted')
             ax.vlines(self.max + e - (2*i + 1), 0, ymax, linestyles='dotted')
-        
 
     def __repr__(self):
         return f"id={self.name}: len={self.length}, nreads={self.nreads}"

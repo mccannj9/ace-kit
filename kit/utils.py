@@ -12,7 +12,7 @@ def window(
 ):
     shape = (array.size - window + 1, window)
     stride = array.strides * 2
-    
+
     view = as_strided(
         array, strides=stride, shape=shape
     )[0::shift]

@@ -8,7 +8,7 @@ class AceFile(object):
         self.file = open(filename)
         as_line = self.file.readline().strip().split()
         self.ncontigs, self.nreads = int(as_line[1]), int(as_line[2])
-        
+
         # read until first CO line
         self.file.readline()
         self.buffer = [self.file.readline().strip()]
@@ -29,10 +29,10 @@ class AceFile(object):
         output = self.buffer
         self.buffer = [line]
         return Contig(output)
-    
+
     def __repr__(self):
         return f"{self.filename}: {self.ncontigs}, {self.nreads}"
-    
+
     def readline(self):
         return self.file.readline()
 

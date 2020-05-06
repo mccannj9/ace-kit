@@ -22,8 +22,7 @@ class SwitchpointFinder:
         self.min_depth = min_depth
         self.min_read_prop = min_read_prop
         self.outdir = outdir
-        # self.fasta = open(f"{outdir}/results.fas", "w")
-    
+
     def fit(self):
         contig_dict = {}
 
@@ -37,7 +36,7 @@ class SwitchpointFinder:
                     self.write_and_plot_results(contig_dict[ctg.name])
 
         return contig_dict
-    
+
     def write_and_plot_results(self, result:Result):
         contig = result.contig
         fig = contig.generate_figure()
@@ -51,7 +50,7 @@ class SwitchpointFinder:
                 seq = contig.seq[pos:pos+30].replace("*", "-")
             else:
                 seq = contig.seq[pos+1-30:pos+1].replace("*", "-")
-            
+
             print(f">{contig.name}_{i}_{pos}_{round(dx)}\n{seq}", file=self.fasta)
 
             for _, ax in enumerate(fig.axes):
@@ -77,7 +76,7 @@ class SwitchpointFinder:
                 derivatives[c] = derivative
                 if abs(derivative) / wdepth < 0.10:
                     sc[c] = 0
-        
+
         # get the idx of min and max of derivative
         min_der_idx = derivatives.argmin()
         max_der_idx = derivatives.argmax()

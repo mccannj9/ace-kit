@@ -11,4 +11,3 @@ dependencies:
     - pandas==1.0.3
     - pytz==2020.1
 prefix: C:\Users\mccan\anaconda3\envs\aceql
-
