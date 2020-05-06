@@ -11,9 +11,10 @@ from kit.utils import window
 
 Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
 
+
 class SwitchpointFinder:
     def __init__(
-        self, input_fn, outdir="./", window_size=7, min_depth=10, min_read_prop=0.1
+        self, input_fn, outdir="./", window_size=7, min_depth=10, min_read_prop=0.01
     ):
 
         self.acefile = AceFile(input_fn)
@@ -30,7 +31,6 @@ class SwitchpointFinder:
 
             for _ in range(self.acefile.ncontigs):
                 ctg = next(self.acefile)
-
                 if ctg.nreads / self.acefile.nreads > self.min_read_prop:
                     cands, derivs = self.find_candidates(ctg)
                     contig_dict[ctg.name] = Result(ctg, cands, derivs)
