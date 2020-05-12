@@ -70,7 +70,8 @@ class SwitchpointFinder:
             if (c-side < 0) or (c + side + 1 > contig.depth.size):
                 sc[c] = 0
             else:
-                wdiff = contig.unmasked[c-side:c+side+1] - contig.masked[c-side:c+side+1]
+                wdiff = contig.unmasked[c-side:c+side+1] -\
+                     contig.masked[c-side:c+side+1]
                 wdepth = contig.depth[c-side:c+side+1].mean()
                 derivative = (wdiff[-1] - wdiff[0]) / self.window_size
                 derivatives[c] = derivative

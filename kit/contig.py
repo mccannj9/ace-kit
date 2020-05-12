@@ -15,12 +15,27 @@ pyplot.style.use('bmh')
 
 StringVector = List[str]
 
-Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't'))
+Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't', 'seq'))
 
 regex = re.compile(
     r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
     r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
 )
+
+
+def get_sequences_for_contig(ctg):
+    seqs = []
+    for i, line in enumerate(ctg.lines):
+        if line.startswith('RD'):
+            seq = []
+            count = 1
+            # l = ctg.lines[i+count]
+            while l := ctg.lines[i+count]:
+                seq.append(l)
+                count += 1
+            seqs.append("".join(seq))
+    return seqs
+
 
 
 class Contig(object):
@@ -70,12 +85,14 @@ class Contig(object):
             int(line.split()[2]) for line in self.lines if line.startswith('QA')
         ]
 
-        zipper = zip(names, lengths, starts, froms, tos)
+        seqs = get_sequences_for_contig(self)
+
+        zipper = zip(names, lengths, starts, froms, tos, seqs)
 
         self.reads = [
             Read(
-                name=_id, length=l, start=s, f=f, t=t
-            ) for _id, l, s, f, t in zipper
+                name=_id, length=l, start=s, f=f, t=t, seq=_seq
+            ) for _id, l, s, f, t, _seq in zipper
         ]
 
         # have to sort by starting and ending position
