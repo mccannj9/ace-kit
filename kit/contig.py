@@ -53,7 +53,7 @@ def get_sequences_for_contig(ctg):
         if line.startswith('RD'):
             seq = []
             count = 1
-            while l := ctg.lines[i+count]:
+            while l:= ctg.lines[i+count]:
                 seq.append(l)
                 count += 1
             seqs.append("".join(seq))

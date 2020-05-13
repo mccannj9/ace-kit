@@ -14,6 +14,7 @@ colors = {
     '-': 'black'
 }
 
+
 def compute_end_pos(read):
     return read.start + read.length
 
@@ -36,10 +37,7 @@ def window(
         return view
 
 
-def create_logo(sequences, figsize=(10, 2.5), save=None):
-
-    fig, ax = pyplot.subplots(1, figsize=figsize)
-
+def create_seqlogo_dataframe(sequences):
     seqlen = len(sequences[0])
     idx = pandas.Index(data=range(seqlen), name='pos')
     basemat = numpy.array([list(x) for x in sequences]).T
@@ -49,6 +47,21 @@ def create_logo(sequences, figsize=(10, 2.5), save=None):
 
     for x in colors:
         df[x] = (basemat == x).sum(axis=1)
+
+    freqs = df / len(sequences)
+    log_freqs = numpy.nan_to_num(numpy.log2(freqs))
+
+    correction = (1 / numpy.log(2)) * (3/(2*len(sequences)))
+    row_scale = (numpy.log2(5) - (-freqs * log_freqs) + correction).sum(axis=1)
+
+    return freqs.multiply(row_scale, axis=0)
+
+
+def create_logo(sequences, figsize=(10, 2.5), save=None):
+
+    fig, ax = pyplot.subplots(1, figsize=figsize)
+
+    df = create_seqlogo_dataframe(sequences)
 
     logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
     logo.style_xticks(anchor=0, spacing=5, rotation=45)

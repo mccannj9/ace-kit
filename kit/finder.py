@@ -6,8 +6,7 @@ import numpy
 from matplotlib import pyplot
 
 from kit.ace import AceFile
-from kit.contig import Contig
-from kit.utils import window
+
 
 Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
 
