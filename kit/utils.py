@@ -52,7 +52,7 @@ def create_seqlogo_dataframe(sequences):
     log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
     correction = (1 / numpy.log(2)) * (3/(2*len(sequences)))
-    row_scale = (numpy.log2(5) - (-freqs * log_freqs) + correction).sum(axis=1)
+    row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
 
     return freqs.multiply(row_scale, axis=0)
 
@@ -66,5 +66,6 @@ def create_logo(sequences, figsize=(10, 2.5), save=None):
     logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
     logo.style_xticks(anchor=0, spacing=5, rotation=45)
     logo.ax.set_xlim([-1, len(df)])
+    logo.ax.set_ylabel('information (bits)')
 
     return logo, fig
