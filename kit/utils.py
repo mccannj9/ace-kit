@@ -51,7 +51,7 @@ def create_seqlogo_dataframe(sequences):
     freqs = df / len(sequences)
     log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
-    correction = (1 / numpy.log(2)) * (3/(2*len(sequences)))
+    correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
     row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
 
     return freqs.multiply(row_scale, axis=0)
