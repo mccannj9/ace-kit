@@ -6,6 +6,7 @@ import numpy
 from matplotlib import pyplot
 
 from kit.ace import AceFile
+from kit.utils import create_logo, extract_seqs
 
 
 Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
@@ -57,6 +58,20 @@ class SwitchpointFinder:
 
         fig.savefig(f"{self.outdir}/{contig.name}.png")
         pyplot.close(fig)
+
+        candidates = numpy.flatnonzero(result.candidates)
+        derivatives = result.derivatives[candidates]
+        _, pos, neg = extract_seqs(contig, candidates, derivatives)
+
+        if pos:
+            _, fig = create_logo(pos)
+            fig.savefig(f"{self.outdir}/{contig.name}_l_logo.png")
+            pyplot.close(fig)
+
+        if neg:
+            _, fig = create_logo(neg)
+            fig.savefig(f"{self.outdir}/{contig.name}_r_logo.png")
+            pyplot.close(fig)
 
     def find_candidates(self, contig):
         dmask = contig.depth > self.min_depth
