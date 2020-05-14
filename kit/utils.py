@@ -1,4 +1,6 @@
 
+import warnings
+
 import logomaker
 import pandas
 import numpy
@@ -49,7 +51,10 @@ def create_seqlogo_dataframe(sequences):
         df[x] = (basemat == x).sum(axis=1)
 
     freqs = df / len(sequences)
-    log_freqs = numpy.nan_to_num(numpy.log2(freqs))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', r'divide by zero encountered in log2')
+        log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
     correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
     row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
@@ -92,4 +97,8 @@ def extract_seqs(ctg, cands, derivs, ext=30):
                 else:
                     seqs_neg.append(seq[pos-ext+1:pos+1])
                 count += 1
+
+    seqs_pos = [x for x in seqs_pos if len(x) == ext]
+    seqs_neg = [x for x in seqs_neg if len(x) == ext]
+
     return count, seqs_pos, seqs_neg

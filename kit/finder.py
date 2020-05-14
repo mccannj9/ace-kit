@@ -31,6 +31,7 @@ class SwitchpointFinder:
             for _ in range(self.acefile.ncontigs):
                 ctg = next(self.acefile)
                 if ctg.nreads / self.acefile.nreads > self.min_read_prop:
+                    print(ctg.name)
                     cands, derivs = self.find_candidates(ctg)
                     contig_dict[ctg.name] = Result(ctg, cands, derivs)
                     self.write_and_plot_results(contig_dict[ctg.name])
