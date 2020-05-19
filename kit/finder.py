@@ -6,10 +6,13 @@ import numpy
 from matplotlib import pyplot
 
 from kit.ace import AceFile
-from kit.utils import create_logo, extract_seqs
+from kit.utils import create_logo, extract_seqs, get_reads_from_candidate
 
 
 Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
+SingleResult = namedtuple(
+    'Result', ('contig', 'position', 'dvalue', 'depth', 'reads')
+)
 
 
 class SwitchpointFinder:
@@ -22,11 +25,12 @@ class SwitchpointFinder:
         self.min_depth = min_depth
         self.min_read_prop = min_read_prop
         self.outdir = outdir
+        self.results = {}
 
     def fit(self):
         contig_dict = {}
 
-        with open(f"{self.outdir}/results.fas", "w") as self.fasta:
+        with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
 
             for _ in range(self.acefile.ncontigs):
                 ctg = next(self.acefile)
@@ -35,6 +39,11 @@ class SwitchpointFinder:
                     cands, derivs = self.find_candidates(ctg)
                     contig_dict[ctg.name] = Result(ctg, cands, derivs)
                     self.write_and_plot_results(contig_dict[ctg.name])
+                    for i in numpy.flatnonzero(cands):
+                        d = derivs[i]
+                        reads = get_reads_from_candidate(ctg, i)
+                        self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
+
 
         return contig_dict
 
@@ -62,7 +71,7 @@ class SwitchpointFinder:
 
         candidates = numpy.flatnonzero(result.candidates)
         derivatives = result.derivatives[candidates]
-        _, pos, neg = extract_seqs(contig, candidates, derivatives)
+        _, read_ids, pos, neg = extract_seqs(contig, candidates, derivatives)
 
         if pos:
             _, fig = create_logo(pos)
@@ -73,6 +82,8 @@ class SwitchpointFinder:
             _, fig = create_logo(neg)
             fig.savefig(f"{self.outdir}/{contig.name}_r_logo.png")
             pyplot.close(fig)
+
+        return read_ids
 
     def find_candidates(self, contig):
         dmask = contig.depth > self.min_depth

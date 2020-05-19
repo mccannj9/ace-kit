@@ -84,6 +84,7 @@ def extract_seqs(ctg, cands, derivs, ext=30):
     seqs_pos = []
     seqs_neg = []
     count = 0
+    read_ids = []
     for r in ctg.reads:
         b = r.start
         e = r.start + r.length
@@ -97,8 +98,27 @@ def extract_seqs(ctg, cands, derivs, ext=30):
                 else:
                     seqs_neg.append(seq[pos-ext+1:pos+1])
                 count += 1
+                read_ids.append(r.name)
 
     seqs_pos = [x for x in seqs_pos if len(x) == ext]
     seqs_neg = [x for x in seqs_neg if len(x) == ext]
 
-    return count, seqs_pos, seqs_neg
+    mate_ids = []
+    for _id in read_ids:
+        if _id.endswith("f"):
+            mate_ids.append(f"{_id[:-1]}r")
+        else:
+            mate_ids.append(f"{_id[:-1]}f")
+    read_ids = set(read_ids + mate_ids)
+
+    return count, read_ids, seqs_pos, seqs_neg
+
+
+def get_reads_from_candidate(contig, pos):
+    reads = []
+    for read in contig.reads:
+        b = read.start
+        e = read.start + read.length
+        if (pos - contig.shift) in range(b, e):
+            reads.append(read)
+    return reads
