@@ -1,6 +1,7 @@
 
 import re
 
+from dataclasses import dataclass
 from typing import List
 from collections import namedtuple
 from operator import attrgetter
@@ -15,7 +16,20 @@ pyplot.style.use('bmh')
 
 StringVector = List[str]
 
-Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't', 'seq'))
+# Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't', 'seq', 'ctg'))
+
+@dataclass
+class Read:
+    name: str
+    length: int
+    start: str
+    f: int
+    t: int
+    seq: str
+    ctg: str
+    boundary: int = 0
+    side: int = 0
+
 
 regex = re.compile(
     r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
@@ -90,7 +104,7 @@ class Contig(object):
 
         self.reads = [
             Read(
-                name=_id, length=l, start=s, f=f, t=t, seq=_seq
+                name=_id, length=l, start=s, f=f, t=t, seq=_seq, ctg=self.name
             ) for _id, l, s, f, t, _seq in zipper
         ]
 
