@@ -31,9 +31,11 @@ class SwitchpointFinder:
         contig_dict = {}
 
         with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
-
+            all_reads = {}
             for _ in range(self.acefile.ncontigs):
                 ctg = next(self.acefile)
+                for read in ctg.reads:
+                    all_reads[read.name] = read
                 if ctg.nreads / self.acefile.nreads > self.min_read_prop:
                     print(ctg.name)
                     cands, derivs = self.find_candidates(ctg)
@@ -42,10 +44,13 @@ class SwitchpointFinder:
                     for i in numpy.flatnonzero(cands):
                         d = derivs[i]
                         reads = get_reads_from_candidate(ctg, i)
+                        for read in reads:
+                            read.side = -numpy.sign(d).astype(int)
+                            all_reads[read.name] = read
                         self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
 
 
-        return contig_dict
+        return contig_dict, all_reads
 
     def write_and_plot_results(self, result:Result):
         contig = result.contig
