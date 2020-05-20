@@ -17,6 +17,20 @@ colors = {
 }
 
 
+rc = {
+    'A': 'T',
+    'C': 'G',
+    'G': 'C',
+    'T': 'A',
+    '-': '-',
+    'N': 'N'
+}
+
+def revcomp(seq):
+    seq = seq.replace('*', '-')
+    return "".join([rc[x] for x in seq[::-1]])
+
+
 def compute_end_pos(read):
     return read.start + read.length
 
@@ -120,5 +134,6 @@ def get_reads_from_candidate(contig, pos):
         b = read.start
         e = read.start + read.length
         if (pos - contig.shift) in range(b, e):
+            read.boundary = 1
             reads.append(read)
     return reads
