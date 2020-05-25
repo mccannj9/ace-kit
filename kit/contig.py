@@ -10,7 +10,7 @@ import numpy
 
 from matplotlib import pyplot
 
-from kit.utils import compute_end_pos, window
+from kit.utils import compute_end_pos, window, rc
 
 pyplot.style.use('bmh')
 
@@ -27,8 +27,16 @@ class Read:
     t: int
     seq: str
     ctg: str
+    comp: str
     boundary: int = 0
     side: int = 0
+
+    def _fasta(self):
+        seq = self.seq.replace("*", "")
+        if self.comp == 'C':
+            seq = "".join([rc[c] for c in seq])
+        return f">{self.name}_{self.f}_{self.t}_{self.boundary}\n{seq}"
+
 
 
 regex = re.compile(
@@ -86,6 +94,10 @@ class Contig(object):
             int(line.split()[3]) for line in self.lines if line.startswith('AF')
         ]
 
+        comps = [
+            line.split()[2] for line in self.lines if line.startswith('AF')
+        ]
+
         lengths = [
             int(line.split()[2]) for line in self.lines if line.startswith('RD')
         ]
@@ -100,12 +112,12 @@ class Contig(object):
 
         seqs = get_sequences_for_contig(self)
 
-        zipper = zip(names, lengths, starts, froms, tos, seqs)
+        zipper = zip(names, lengths, starts, froms, tos, seqs, comps)
 
         self.reads = [
             Read(
-                name=_id, length=l, start=s, f=f, t=t, seq=_seq, ctg=self.name
-            ) for _id, l, s, f, t, _seq in zipper
+                name=_id, length=l, start=s, f=f, t=t, seq=_seq, ctg=self.name, comp=c
+            ) for _id, l, s, f, t, _seq, c in zipper
         ]
 
         # have to sort by starting and ending position
