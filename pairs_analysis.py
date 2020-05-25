@@ -2,6 +2,7 @@
 
 import sys
 from dataclasses import dataclass
+from difflib import get_close_matches
 
 @dataclass
 class Read:
@@ -60,4 +61,7 @@ for pair in pairs_list:
     pair.set_reference()
     pair.get_kmers_in_reads()
 
-
+for k in pair.objective.kmers:
+    print(k)
+    matches = get_close_matches(k, pair.reference.kmers.keys(), cutoff=0.75)
+    print(k, " ".join([str(pair.reference.kmers[x]) for x in matches]))
