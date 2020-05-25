@@ -16,8 +16,6 @@ pyplot.style.use('bmh')
 
 StringVector = List[str]
 
-# Read = namedtuple('Read', ('name', 'length', 'start', 'f', 't', 'seq', 'ctg'))
-
 @dataclass
 class Read:
     name: str

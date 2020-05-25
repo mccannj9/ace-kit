@@ -69,7 +69,7 @@ for x, y in boundary_mate_pairs:
     print(f">{x.name}\n{x.seq.replace('*', '-')}")
     print(f">{y.name}\n{revcomp(y.seq)}")
 
-with open(f'{args.output_dir}/mates_with_boundary_info.fas') as fas:
+with open(f'{args.output_dir}/mates_with_boundary_info.fas', 'w') as fas:
     for _, x, y in mate_pairs:
         print(x._fasta(), file=fas)
         print(y._fasta(), file=fas)
