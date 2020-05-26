@@ -32,8 +32,12 @@ class Read:
     def _fasta(self):
         seq = self.seq.replace("*", "")
         if self.comp == 'C':
-            seq = "".join([rc[c] for c in seq])
+            self._comp_seq()
         return f">{self.name}_{self.f}_{self.t}_{self.boundary}\n{seq}"
+
+    def _comp_seq(self):
+        self.seq = "".join([rc[c] for c in self.seq])
+        self.comp = 'U' if self.comp == 'C' else 'C'
 
 
 
