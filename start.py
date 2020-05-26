@@ -4,7 +4,7 @@ import os
 import argparse
 
 from kit.finder import SwitchpointFinder
-from kit.utils import revcomp
+from kit.utils import revcomp, remove_gaps_and_adjust_boundary
 
 parser = argparse.ArgumentParser()
 
@@ -59,6 +59,8 @@ for prefix in boundary_read_prefixes:
     if (f in all_reads) and (r in all_reads):
         rf = all_reads[f]
         rr = all_reads[r]
+        remove_gaps_and_adjust_boundary(rf)
+        remove_gaps_and_adjust_boundary(rr)
         mate_pairs.append(
             (rf.boundary * rr.boundary, rf, rr)
         )
@@ -66,8 +68,12 @@ for prefix in boundary_read_prefixes:
 boundary_mate_pairs = [(x,y) for w,x,y in mate_pairs if w]
 
 for x, y in boundary_mate_pairs:
-    print(f">{x.name}\n{x.seq.replace('*', '-')}")
-    print(f">{y.name}\n{revcomp(y.seq)}")
+    # print(f">{x.name}\n{x.seq.replace('*', '-')}")
+    # print(f">{y.name}\n{revcomp(y.seq)}")
+    remove_gaps_and_adjust_boundary(x)
+    remove_gaps_and_adjust_boundary(y)
+    print(x)
+    print(y)
 
 with open(f'{args.output_dir}/mates_with_boundary_info.fas', 'w') as fas:
     for _, x, y in mate_pairs:

@@ -134,6 +134,23 @@ def get_reads_from_candidate(contig, pos):
         b = read.start
         e = read.start + read.length
         if (pos - contig.shift) in range(b, e):
-            read.boundary = 1
+            pos_in_read = pos - contig.shift - b
+            read.boundary = pos_in_read
             reads.append(read)
     return reads
+
+
+def find(s, ch, start=1):
+    return [i for i, ltr in enumerate(s, start=start) if ltr == ch]
+
+
+def remove_gaps_and_adjust_boundary(read):
+    positions = list(range(1, read.length + 1))
+    gaps_pos = find(read.seq, '*')
+    for gap in gaps_pos:
+        positions.pop(positions.index(gap))
+    if read.boundary:
+        new_boundary_location = positions.index(read.boundary) + 1
+        read.boundary = new_boundary_location
+    read.seq = read.seq.replace("*", "")
+    read.length = len(read.seq)
