@@ -2,6 +2,7 @@
 
 import os
 import argparse
+import pickle
 
 from kit.finder import SwitchpointFinder
 from kit.utils import revcomp, remove_gaps_and_adjust_boundary
@@ -47,9 +48,6 @@ results_dict, all_reads = finder.fit()
 
 results = finder.results
 
-# boundary_reads = [results[k].reads for k in results]
-# boundary_reads = [item for sublist in boundary_reads for item in sublist]
-
 boundary_read_prefixes = set([y.name[:-1] for x,y in all_reads.items() if y.boundary])
 
 mate_pairs = []
@@ -67,15 +65,5 @@ for prefix in boundary_read_prefixes:
 
 boundary_mate_pairs = [(x,y) for w,x,y in mate_pairs if w]
 
-for x, y in boundary_mate_pairs:
-    # print(f">{x.name}\n{x.seq.replace('*', '-')}")
-    # print(f">{y.name}\n{revcomp(y.seq)}")
-    remove_gaps_and_adjust_boundary(x)
-    remove_gaps_and_adjust_boundary(y)
-    print(x)
-    print(y)
-
-with open(f'{args.output_dir}/mates_with_boundary_info.fas', 'w') as fas:
-    for _, x, y in mate_pairs:
-        print(x._fasta(), file=fas)
-        print(y._fasta(), file=fas)
+with open(f'{args.output_dir}/mates_with_boundary_info.pkl', 'wb') as pkl:
+    pickle.dump(mate_pairs, pkl)
