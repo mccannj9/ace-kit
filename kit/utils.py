@@ -154,3 +154,4 @@ def remove_gaps_and_adjust_boundary(read):
         read.boundary = new_boundary_location
     read.seq = read.seq.replace("*", "")
     read.length = len(read.seq)
+    read.t = read.length if read.length < read.t else read.t

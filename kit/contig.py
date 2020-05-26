@@ -36,8 +36,15 @@ class Read:
         return f">{self.name}_{self.f}_{self.t}_{self.boundary}\n{seq}"
 
     def _comp_seq(self):
-        self.seq = "".join([rc[c] for c in self.seq])
+        self.seq = "".join([rc[c] for c in self.seq[::-1]])
         self.comp = 'U' if self.comp == 'C' else 'C'
+        if self.boundary:
+            self.boundary = len(self.seq) - self.boundary - 1
+
+    def _boundary_seq(self, length=30):
+        if self.side == 0:
+            return self.seq
+        return self.seq[self.boundary:self.boundary+length]
 
     def __bool__(self):
         return self.boundary != 0

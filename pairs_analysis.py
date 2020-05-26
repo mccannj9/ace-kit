@@ -20,9 +20,12 @@ class Pair:
         self.reference = self.f if self.f else self.r
         self.objective = self.f if self.reference != self.f else self.r
 
-    def get_kmers_in_reads(self, k=7):
-        self.f.kmers = {self.f.seq[x:x+k]:x for x in range(len(self.f)-k+1)}
-        self.r.kmers = {self.r.seq[x:x+k]:x for x in range(len(self.r)-k+1)}
+    def get_kmers_in_reads(self, k=7, length=30):
+        # bseq_f = self.f.seq[self.f.boundary]
+        bseq_f = self.f._boundary_seq(length=length)
+        bseq_r = self.r._boundary_seq(length=length)
+        self.f.kmers = {bseq_f[x:x+k]:x for x in range(len(bseq_f)-k+1)}
+        self.r.kmers = {bseq_r[x:x+k]:x for x in range(len(bseq_r)-k+1)}
 
     def uncomplement_reads(self):
         if self.f.comp == 'C':
@@ -32,7 +35,7 @@ class Pair:
 
 
 reads_pickle = sys.argv[1]
-min_k = 7
+min_k = 8
 
 
 with open(reads_pickle, 'rb') as pkl:
@@ -51,5 +54,6 @@ for pair in pairs_list:
         print(pair)
         for k in pair.objective.kmers:
             print(k)
-            matches = get_close_matches(k, pair.reference.kmers.keys(), cutoff=0.75)
-            print(k, " ".join([str(pair.reference.kmers[x]) for x in matches]))
+            pr_keys = list(pair.reference.kmers.keys())
+            matches = get_close_matches(k, pr_keys, cutoff=6.5/8)
+            print(k, pair.objective.kmers[k], " ".join([f"{x} {pair.reference.kmers[x]}" for x in matches]))
