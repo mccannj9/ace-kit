@@ -39,6 +39,15 @@ class Read:
         self.seq = "".join([rc[c] for c in self.seq])
         self.comp = 'U' if self.comp == 'C' else 'C'
 
+    def __bool__(self):
+        return self.boundary != 0
+
+    def __mul__(self, other):
+        return self.boundary * other.boundary
+
+    def __len__(self):
+        return len(self.seq)
+
 
 
 regex = re.compile(
