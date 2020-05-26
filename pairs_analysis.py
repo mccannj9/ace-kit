@@ -30,6 +30,7 @@ class Pair:
         if self.r.comp == 'C':
             self.r._comp_seq()
 
+
 reads_pickle = sys.argv[1]
 min_k = 7
 
