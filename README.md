@@ -24,6 +24,12 @@ where at least one of the mates is on a boundary _and_ the pair is not
 split into separate clusters. This file, which ends with the extension
 `.pkl` will be used as input for the next script.
 
+Use the following to see information about arguments to the script:
+```python
+python start.py --help
+```
+
+
 ``` python
 python pairs_analysis [pickle_file]
 ```
