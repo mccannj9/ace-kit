@@ -25,15 +25,18 @@ split into separate clusters. This file, which ends with the extension
 `.pkl` will be used as input for the next script.
 
 Use the following to see information about arguments to the script:
+
 ```python
 python start.py --help
 ```
 
-
 ``` python
-python pairs_analysis [pickle_file]
+python pairs_analysis -p [pickle_file] -o [output_dir]
 ```
 
-The output of this script is still a bit of a work in progress, but will
-eventually contain information about the presence of inverted repeats in
-each read pair extracted from the previous analysis.
+The output of this script is currently the results of running the program
+einverted from the emboss package. This includes an alignment file, similar
+to what one gets when running a blast with the standard blast output format.
+There is also a fasta file with the extracted regions of the reads which
+have inverted repeats. Arguments for parameters that can be tweaked for the
+einverted program will be added, as of now they are fixed to defaults.
