@@ -12,11 +12,11 @@ table_row = f"""
                         {contig_number}
                     </div>
                     <div class="table-body-cell">
-                        <img src="{path_boundary_plot}" alt="Masking Plot" width=400>
+                        <img src="{path_boundary_plot}" alt="Boundary Plot" width=400>
                     </div>
                     <div class="table-logo-cell">
-                        <img src="{path_left_logo}" alt="Masking Plot" width=400>
-                        <img src="{path_right_logo}" alt="Masking Plot" width=400>
+                        <img src="{path_left_logo}" alt="Logo Left Plot" width=400>
+                        <img src="{path_right_logo}" alt="Logo Right Plot" width=400>
                     </div>
                 </div>
 
@@ -36,7 +36,7 @@ html = f"""
         <div id="table">
             <div id="table-header">
                 <div class="table-header-cell">Contig Number</div>
-                <div class="table-header-cell">Masking Plot</div>
+                <div class="table-header-cell">Boundary Plot</div>
                 <div class="table-header-cell">Logos</div>
             </div>
             <div id="table-body">
