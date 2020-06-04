@@ -54,8 +54,8 @@ einfas = f"{args.output_dir}/concatenated_mate_pairs_tirs.fas"
 subprocess.check_call(
     [
         'einverted', '-sequence', output_fas,
-        '-outfile', einfas, '-outseq', einout,
-        '-gap', '12', '-threshold', '80',
+        '-outfile', einout, '-outseq', einfas,
+        '-gap', '12', '-threshold', '50',
         '-match', '3', '-mismatch', '-4'
     ]
 )
