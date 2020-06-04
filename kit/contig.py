@@ -18,32 +18,6 @@ StringVector = List[str]
 
 
 @dataclass
-class Pair:
-    f: Read
-    r: Read
-
-    def __bool__(self):
-        return self.f * self.r != 0
-
-    def set_reference(self):
-        self.reference = self.f if self.f else self.r
-        self.objective = self.f if self.reference != self.f else self.r
-
-    def get_kmers_in_reads(self, k=7, length=30):
-        # bseq_f = self.f.seq[self.f.boundary]
-        bseq_f = self.f._boundary_seq(length=length)
-        bseq_r = self.r._boundary_seq(length=length)
-        self.f.kmers = {bseq_f[x:x+k]:x for x in range(len(bseq_f)-k+1)}
-        self.r.kmers = {bseq_r[x:x+k]:x for x in range(len(bseq_r)-k+1)}
-
-    def uncomplement_reads(self):
-        if self.f.comp == 'C':
-            self.f._comp_seq()
-        if self.r.comp == 'C':
-            self.r._comp_seq()
-
-
-@dataclass
 class Read:
     name: str
     length: int
@@ -82,6 +56,31 @@ class Read:
     def __len__(self):
         return len(self.seq)
 
+
+@dataclass
+class Pair:
+    f: Read
+    r: Read
+
+    def __bool__(self):
+        return self.f * self.r != 0
+
+    def set_reference(self):
+        self.reference = self.f if self.f else self.r
+        self.objective = self.f if self.reference != self.f else self.r
+
+    def get_kmers_in_reads(self, k=7, length=30):
+        # bseq_f = self.f.seq[self.f.boundary]
+        bseq_f = self.f._boundary_seq(length=length)
+        bseq_r = self.r._boundary_seq(length=length)
+        self.f.kmers = {bseq_f[x:x+k]:x for x in range(len(bseq_f)-k+1)}
+        self.r.kmers = {bseq_r[x:x+k]:x for x in range(len(bseq_r)-k+1)}
+
+    def uncomplement_reads(self):
+        if self.f.comp == 'C':
+            self.f._comp_seq()
+        if self.r.comp == 'C':
+            self.r._comp_seq()
 
 
 regex = re.compile(
