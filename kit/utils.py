@@ -155,3 +155,7 @@ def remove_gaps_and_adjust_boundary(read):
     read.seq = read.seq.replace("*", "")
     read.length = len(read.seq)
     read.t = read.length if read.length < read.t else read.t
+
+
+def sign(x):
+    return 1 - (x <= 0)
