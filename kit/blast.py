@@ -44,6 +44,7 @@ def quick_blastn(query:str=None, subject:str=None, out:str=None, outfmt:str='6')
             '-out', out, '-outfmt', outfmt, '-task', 'blastn-short'
         ]
         subprocess.check_call(args)
+
     except subprocess.CalledProcessError as e:
         call = " ".join(args)
         print(f"The following call returned the error code = {e}:\n{call}")
@@ -60,7 +61,6 @@ def parse_blast_output(input_file):
             res = BlastResult(*[
                 fields(BlastResult)[x].type(y) for x, y in enumerate(line)
             ])
-            # res = BlastResult(*line.strip().split())
             blast_results.append(res)
 
     return blast_results
@@ -76,3 +76,13 @@ def set_blast_result_orientation(br: BlastResult):
         br.orientation = -1
 
     return br.orientation
+
+
+def get_blast_hits_with_orientation(fasta:str, out:str=f"{output_dir}/boundary_blast_output.txt"):
+    retval = quick_blastn(fasta, out=out)
+    blast_res = parse_blast_output(retval)
+
+    for hit in blast_res:
+        set_blast_result_orientation(hit)
+
+    return blast_res

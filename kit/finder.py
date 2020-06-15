@@ -10,7 +10,6 @@ from kit.ace import AceFile
 from kit.utils import create_logo, extract_seqs, get_reads_from_candidate
 from kit.contig import Contig
 
-# Result = namedtuple('Result', ('contig', 'candidates', 'derivatives', 'n'))
 SingleResult = namedtuple(
     'Result', ('contig', 'position', 'dvalue', 'depth', 'reads')
 )

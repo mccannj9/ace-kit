@@ -6,6 +6,7 @@ import pickle
 
 from kit.finder import SwitchpointFinder
 from kit.utils import revcomp, remove_gaps_and_adjust_boundary
+from kit.blast import get_blast_hits_with_orientation
 
 parser = argparse.ArgumentParser()
 
@@ -67,3 +68,7 @@ boundary_mate_pairs = [(x,y) for w,x,y in mate_pairs if w]
 
 with open(f'{args.output_dir}/mates_with_boundary_info.pkl', 'wb') as pkl:
     pickle.dump(mate_pairs, pkl)
+
+fasta = f"{finder.outdir}/boundaries_from_contigs.fas"
+blast_output = f"{finder.outdir}/boundary_blast_output.txt"
+blast_hits = get_blast_hits_with_orientation(fasta, out=blast_output)
