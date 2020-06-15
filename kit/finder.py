@@ -1,5 +1,6 @@
 
 from collections import namedtuple
+from dataclasses import dataclass
 
 import numpy
 
@@ -7,12 +8,22 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.utils import create_logo, extract_seqs, get_reads_from_candidate
+from kit.contig import Contig
 
-
-Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
+# Result = namedtuple('Result', ('contig', 'candidates', 'derivatives', 'n'))
 SingleResult = namedtuple(
     'Result', ('contig', 'position', 'dvalue', 'depth', 'reads')
 )
+
+@dataclass
+class Result:
+    contig: Contig
+    candidates: numpy.ndarray
+    derivatives: numpy.ndarray
+    n: int = 0
+
+    def __lt__(self, other):
+        return self.n < other.n
 
 
 class SwitchpointFinder:
@@ -49,6 +60,8 @@ class SwitchpointFinder:
                             all_reads[read.name] = read
                         self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
 
+        for k in contig_dict:
+            contig_dict[k].n = contig_dict[k].candidates.nonzero()[0].size
 
         return contig_dict, all_reads
 
