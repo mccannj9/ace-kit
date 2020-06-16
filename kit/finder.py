@@ -1,6 +1,6 @@
 
 from collections import namedtuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy
 
@@ -20,9 +20,27 @@ class Result:
     candidates: numpy.ndarray
     derivatives: numpy.ndarray
     n: int = 0
+    blast_results: list = field(default_factory=list)
 
     def __lt__(self, other):
         return self.n < other.n
+
+    def max_mag_derivative(self):
+        return numpy.abs(self.derivatives.max())
+
+    def write_contig_boundaries_as_fasta(self, filename:str):
+        with open(filename, 'w') as fasta:
+            for c in numpy.flatnonzero(self.candidates):
+                pos = c - self.contig.shift
+                dx = self.derivatives[c]
+
+                if dx > 0:
+                    seq = self.contig.seq[pos:pos+30].replace("*", "")
+                    side = "l"
+                else:
+                    seq = self.contig.seq[pos+1-30:pos+1].replace("*", "")
+                    side = "r"
+                print(f">{self.contig.name}_{c}_{pos}_{side}\n{seq}", file=fasta)
 
 
 class SwitchpointFinder:
