@@ -25,9 +25,17 @@ class BlastResult:
     bitscore: float
     orientation: int = 0
 
+    def __eq__(self, other):
+        q = self.query == other.query
+        s = self.subject == other.subject
+        return q and s
 
 
-def quick_blastn(query:str=None, subject:str=None, out:str=None, outfmt:str='6'):
+
+def quick_blastn(
+    query:str=None, subject:str=None, out:str=None,
+    outfmt:str='6', add_args=['-task', 'blastn-short']
+):
     if not(query):
         print("please provide at least a query file")
         return 1
@@ -40,9 +48,9 @@ def quick_blastn(query:str=None, subject:str=None, out:str=None, outfmt:str='6')
 
     try:
         args = [
-            blast_path, '-query', query, '-subject', subject,
-            '-out', out, '-outfmt', outfmt, '-task', 'blastn-short'
-        ]
+            blast_path, '-query', query, '-subject',
+            subject, '-out', out, '-outfmt', outfmt,
+        ] + add_args
         subprocess.check_call(args)
 
     except subprocess.CalledProcessError as e:
@@ -61,6 +69,13 @@ def parse_blast_output(input_file):
             res = BlastResult(*[
                 fields(BlastResult)[x].type(y) for x, y in enumerate(line)
             ])
+
+            if res in blast_results:
+                other = blast_results[blast_results.index(res)]
+                if res.evalue < other.evalue:
+                    blast_results[blast_results.index(res)] = res
+                continue
+
             blast_results.append(res)
 
     return blast_results
