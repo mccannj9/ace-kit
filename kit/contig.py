@@ -262,6 +262,22 @@ class Contig(object):
 
     def __len__(self):
         return self.length
+
+    def get_reads_with_position(self, pos, slope, l=30):
+        seqs = []
+        for r in self.reads:
+            b = r.start
+            e = r.start + r.length
+            if (pos - self.shift) in range(b, e):
+                p = pos - self.shift - b
+                seq = r.seqs.replace("*", "")
+                if slope > 0:
+                    seqs.append(seq[p:p+l])
+                else:
+                    seqs.append(seq[p-l+1:p+1])
+        return seqs
+
+
 @dataclass
 class Boundary:
     contig: Contig
