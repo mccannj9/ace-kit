@@ -7,10 +7,12 @@ from collections import namedtuple
 from operator import attrgetter
 
 import numpy
+import logomaker
 
 from matplotlib import pyplot
+from logomaker import Logo
 
-from kit.utils import compute_end_pos, window, rc
+from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
 
 pyplot.style.use('bmh')
 
@@ -113,6 +115,7 @@ class Contig(object):
 
         intro = lines[0]
         self.lines = lines
+        self.boundaries = []
 
         matches = regex.match(intro).groupdict()
         for m in matches:
@@ -193,6 +196,10 @@ class Contig(object):
         self.average_rd = self.depth.mean()
 
     @property
+    def number_of_boundaries(self):
+        return len(self.boundaries)
+
+    @property
     def name(self):
         return f"CL{self.cluster}Contig{self.number}"
 
@@ -237,10 +244,7 @@ class Contig(object):
     def generate_figure(self, fs=(6, 4), filename=None, **kwargs):
         fig, ax = pyplot.subplots(1, figsize=fs)
         self.plot_profile(ax)
-        # self.plot_profile(ax[1], window_size=3)
-        # self.plot_profile(ax[2], window_size=5)
         fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
-        # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         if filename:
             fig.savefig(filename, **kwargs)
         return fig
@@ -258,3 +262,40 @@ class Contig(object):
 
     def __len__(self):
         return self.length
+@dataclass
+class Boundary:
+    contig: Contig
+    pos: int
+    side: int
+    rate: float
+    logo: Logo = None
+    orient: int = 0
+    seq: str = ""
+
+    def set_boundary_sequence(self, l=30):
+        pos = self.pos - self.contig.shift
+        if self.side == 1:
+            self.seq = self.contig.seq[pos:pos+l].replace("*", "")
+        else:
+            self.seq = self.contig.seq[pos+1-l:pos+1].replace("*", "")
+
+    def set_logo(self, l=30, figsize=(10, 2.5), save=None):
+        seqs = self.contig.get_reads_with_position(self.pos, self.side, l=30)
+        df = create_seqlogo_dataframe(seqs)
+
+        fig, ax = pyplot.subplots(1, figsize=figsize)
+        self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
+        self.logo.style_xticks(anchor=0, spacing=5, rotation=45)
+        self.logo.ax.set_xlim([-1, len(df)])
+        self.logo.ax.set_ylabel('information (bits)')
+
+        if save:
+            fig.savefig(save)
+
+    def side_as_l_or_r(self):
+        return "l" if self.side == 1 else "r"
+
+    def boundary_seq_as_fasta(self):
+        pos = self.pos - self.contig.shift
+        return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
+
