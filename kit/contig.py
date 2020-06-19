@@ -250,13 +250,11 @@ class Contig(object):
             fig.savefig(filename, **kwargs)
         return fig
 
-    def add_candidate_switchpoints_to_fig(self, fig, candidates):
-        b, e = candidates
-        # gets max depth for drawing the line
-        ymax = (self.unmasked + self.masked).max()
-        for i, ax in enumerate(fig.axes):
-            ax.vlines(self.min + b, 0, ymax, linestyles='dotted')
-            ax.vlines(self.max + e - (2*i + 1), 0, ymax, linestyles='dotted')
+    def add_candidate_switchpoint_to_fig(self, fig, candidate):
+
+        ymax = self.depth.max()
+        for ax in fig.axes:
+            ax.vlines(self.min + candidate, 0, ymax, linestyles='dotted')
 
     def __repr__(self):
         return f"id={self.name}: len={self.length}, nreads={self.nreads}"
