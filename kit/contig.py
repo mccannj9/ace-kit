@@ -13,6 +13,7 @@ from matplotlib import pyplot
 from logomaker import Logo
 
 from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
+from kit.utils import create_logo
 
 pyplot.style.use('bmh')
 
@@ -268,14 +269,16 @@ class Contig(object):
         for r in self.reads:
             b = r.start
             e = r.start + r.length
-            if (pos - self.shift) in range(b, e):
+            if ((pos - self.shift) in range(b, e)):
                 p = pos - self.shift - b
-                seq = r.seqs.replace("*", "")
+                seq = r.seq.replace("*", "-")
                 if slope > 0:
                     seqs.append(seq[p:p+l])
                 else:
                     seqs.append(seq[p-l+1:p+1])
-        return seqs
+        # this removes those reads which do not have length == l
+        # otherwise dataframe is messed up
+        return [x for x in seqs if len(x) == l]
 
 
 @dataclass
@@ -296,7 +299,7 @@ class Boundary:
             self.seq = self.contig.seq[pos+1-l:pos+1].replace("*", "")
 
     def set_logo(self, l=30, figsize=(10, 2.5), save=None):
-        seqs = self.contig.get_reads_with_position(self.pos, self.side, l=30)
+        seqs = self.contig.get_reads_with_position(self.pos, self.side * self.rate, l=30)
         df = create_seqlogo_dataframe(seqs)
 
         fig, ax = pyplot.subplots(1, figsize=figsize)
