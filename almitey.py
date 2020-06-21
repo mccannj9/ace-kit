@@ -47,3 +47,34 @@ keyword_args = {
 }
 
 finder = SwitchpointFinder(args.acefile, args.output_dir, **keyword_args)
+contigs = finder.fit_new()
+
+sorted_contigs = sorted(
+    contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
+)
+# remove any contigs with no inferred boundaries
+sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
+
+nboundaries_found = sum([c.nboundaries for c in sorted_contigs])
+at_least_two = True if nboundaries_found > 0 else False
+# check if two boundaries were found in one contig
+two = True if sorted_contigs[0].nboundaries == 2 else False
+
+if not(at_least_two):
+    print("Not enough boundaries found in contigs")
+    # run was still a success, just no boundaries ;)
+    sys.exit(0)
+
+# building database from top contig with two boundaries
+if two:
+    reference = sorted_contigs[0]
+    outfilename = f"{args.output_dir}/top_boundaries_db.fas"
+    print(f"Two boundaries found in {reference.name}, using as database > {outfilename}")
+
+    with open(outfilename, 'w') as fasta:
+        for b in reference.boundaries:
+            print(b.boundary_seq_as_fasta(), file=fasta)
+
+else:
+    print(f"Method for two boundaries in different contigs not ready yet")
+    sys.exit(0)

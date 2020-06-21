@@ -197,8 +197,12 @@ class Contig(object):
         self.average_rd = self.depth.mean()
 
     @property
-    def number_of_boundaries(self):
+    def nboundaries(self):
         return len(self.boundaries)
+
+    @property
+    def boundary_rate_sum(self):
+        return sum([x.rate for x in self.boundaries])
 
     @property
     def name(self):

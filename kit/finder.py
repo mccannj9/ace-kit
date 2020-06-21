@@ -86,6 +86,24 @@ class SwitchpointFinder:
 
         return contig_dict, all_reads
 
+
+    def fit_new(self):
+        contigs_list = []
+
+        with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
+            for _ in range(self.acefile.ncontigs):
+                self.current_ctg = next(self.acefile)
+
+                if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
+                    print(self.current_ctg.name)
+                    cands, derivs = self.find_candidates()
+                    # contig_dict[self.current_ctg.name] = self.current_ctg
+                    self.generate_output_for_boundaries(cands, derivs)
+                    contigs_list.append(self.current_ctg)
+
+        return contigs_list
+
+
     def generate_output_for_boundaries(self, cands, slopes):
         ctg = self.current_ctg
         contig_plot = ctg.generate_figure()
