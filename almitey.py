@@ -73,8 +73,49 @@ if two:
 
     with open(outfilename, 'w') as fasta:
         for b in reference.boundaries:
+            b.orient = b.side
             print(b.boundary_seq_as_fasta(), file=fasta)
+
+    ref_l, ref_r = reference.boundaries
 
 else:
     print(f"Method for two boundaries in different contigs not ready yet")
     sys.exit(0)
+
+boundaries = []
+for c in sorted_contigs:
+    boundaries += c.boundaries
+
+query = f"{finder.outdir}/boundaries_from_contigs.fas"
+subject = outfilename
+orient_out = f"{finder.outdir}/orientation_blast.txt"
+quick_blastn(query, subject, orient_out)
+
+blast_results = parse_blast_output(orient_out)
+for res in blast_results:
+    set_blast_result_orientation(res)
+
+# don't look at first two boundaries, they are the reference
+boundary_blasts = {}
+for b in boundaries[2:]:
+    boundary_blasts[b.name] = sorted(
+        [x for x in blast_results if b.name == x.query], key=lambda b: b.subject
+    )
+    orients = [x.orientation for x in boundary_blasts[b.name]]
+    if orients == [ref_l.orient, ref_r.orient]:
+        print('left side')
+        b.orient = ref_l.orient
+    else:
+        print('right side')
+        b.orient = ref_r.orient
+
+
+with open(f"{finder.outdir}/boundaries_left.fas", 'w') as fasta:
+    for b in boundaries:
+        if b.orient == 1.0:
+            print(b.boundary_seq_as_fasta(), file=fasta)
+
+with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
+    for b in boundaries:
+        if b.orient == -1.0:
+            print(b.boundary_seq_as_fasta(), file=fasta)

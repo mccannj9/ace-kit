@@ -293,6 +293,10 @@ class Boundary:
     orient: int = 0
     seq: str = ""
 
+    @property
+    def name(self):
+        return f"{self.contig.name}_{self.side_as_l_or_r()}"
+
     def set_boundary_sequence(self, l=30):
         pos = self.pos - self.contig.shift
         if self.side == 1:
