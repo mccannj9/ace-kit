@@ -12,7 +12,9 @@ from kit.blast import set_blast_result_orientation, parse_blast_output
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-a', '--acefile', required=True)
+parser.add_argument(
+    '-a', '--acefile', required=True
+)
 
 parser.add_argument(
     '-o', '--output-dir', required=False, default="./", type=str
@@ -73,17 +75,23 @@ if two:
     outfilename = f"{args.output_dir}/top_boundaries_db.fas"
     print(f"Two boundaries found in one contig, using as database > {outfilename}")
     db_result.write_contig_boundaries_as_fasta(outfilename)
-    query = f"{finder.outdir}/boundaries_from_contigs.fas"
-    subject = outfilename
-    orient_out = f"{finder.outdir}/orientation_blast.txt"
-    quick_blastn(query, subject, orient_out)
-    blast_results = parse_blast_output(orient_out)
-    for res in blast_results:
-        set_blast_result_orientation(res)
-    br_sorted = sorted(blast_results, key=lambda element: (element.subject, element.orientation))
+
 
 else:
+    # get 2 contigs with boundaries on opposite sides
     pass
+
+query = f"{finder.outdir}/boundaries_from_contigs.fas"
+subject = outfilename
+orient_out = f"{finder.outdir}/orientation_blast.txt"
+quick_blastn(query, subject, orient_out)
+blast_results = parse_blast_output(orient_out)
+for res in blast_results:
+    set_blast_result_orientation(res)
+br_sorted = sorted(
+    blast_results,
+    key=lambda element: (element.subject, element.orientation)
+)
 
 keep_results = []
 for res in results_list:
