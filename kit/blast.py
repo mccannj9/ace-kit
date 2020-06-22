@@ -81,7 +81,7 @@ def parse_blast_output(input_file):
     return blast_results
 
 
-def set_blast_result_orientation(br: BlastResult):
+def set_result_orientation(br: BlastResult):
     qdiff = br.qstart - br.qend
     sdiff = br.sstart - br.send
 

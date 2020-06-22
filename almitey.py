@@ -1,19 +1,18 @@
 #! /usr/bin/env python3
 
 import os
+import glob
 import sys
 import argparse
 import pickle
 
 from kit.finder import SwitchpointFinder
-from kit.utils import revcomp, remove_gaps_and_adjust_boundary
-from kit.blast import get_blast_hits_with_orientation, quick_blastn
-from kit.blast import set_blast_result_orientation, parse_blast_output
+from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    '-a', '--acefile', required=True
+    '-i', '--input-dir', required=True
 )
 
 parser.add_argument(
@@ -46,7 +45,9 @@ keyword_args = {
     'min_read_prop': args.min_read_prop
 }
 
-finder = SwitchpointFinder(args.acefile, args.output_dir, **keyword_args)
+acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
+
+finder = SwitchpointFinder(acefile, args.output_dir, **keyword_args)
 contigs = finder.fit_new()
 
 sorted_contigs = sorted(
@@ -68,10 +69,10 @@ if not(at_least_two):
 # building database from top contig with two boundaries
 if two:
     reference = sorted_contigs[0]
-    outfilename = f"{args.output_dir}/top_boundaries_db.fas"
-    print(f"Two boundaries found in {reference.name}, using as database > {outfilename}")
+    outname = f"{args.output_dir}/top_boundaries_db.fas"
+    print(f"Two boundaries found in {reference.name}, using as database > {outname}")
 
-    with open(outfilename, 'w') as fasta:
+    with open(outname, 'w') as fasta:
         for b in reference.boundaries:
             b.orient = b.side
             print(b.boundary_seq_as_fasta(), file=fasta)
@@ -87,13 +88,13 @@ for c in sorted_contigs:
     boundaries += c.boundaries
 
 query = f"{finder.outdir}/boundaries_from_contigs.fas"
-subject = outfilename
+subject = outname
 orient_out = f"{finder.outdir}/orientation_blast.txt"
 quick_blastn(query, subject, orient_out)
 
 blast_results = parse_blast_output(orient_out)
 for res in blast_results:
-    set_blast_result_orientation(res)
+    set_result_orientation(res)
 
 # don't look at first two boundaries, they are the reference
 boundary_blasts = {}
@@ -119,3 +120,27 @@ with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
     for b in boundaries:
         if b.orient == -1.0:
             print(b.boundary_seq_as_fasta(), file=fasta)
+
+
+# paired reads analysis
+
+subject_prefix = f"{finder.outdir}/boundaries"
+reads_fn = f"{args.input_dir}/reads.fas"
+
+print("Blasting all reads against reference boundaries..")
+quick_blastn(
+    query=reads_fn, subject=outname, out=f"{finder.outdir}/all_reads_blast.txt"
+)
+print("Finished.")
+
+blast_results = parse_blast_output(f"{finder.outdir}/all_reads_blast.txt")
+
+id_dict = {}
+for br in blast_results:
+    n = br.query[:-1]
+    if n not in id_dict:
+        id_dict[n] = 1
+    else:
+        id_dict[n] += 1
+
+potential_pairs = set([x for x in id_dict if id_dict[x] == 4])
