@@ -127,20 +127,18 @@ with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
 subject_prefix = f"{finder.outdir}/boundaries"
 reads_fn = f"{args.input_dir}/reads.fas"
 
-print("Blasting all reads against reference boundaries..")
-quick_blastn(
-    query=reads_fn, subject=outname, out=f"{finder.outdir}/all_reads_blast.txt"
-)
-print("Finished.")
+with open(reads_fn) as reads:
+    pairs = {}
+    complete = 0
+    total = 0
+    for line in reads:
+        if line.startswith(">"):
+            line = line.strip()[1:-1]
+            if line not in pairs:
+                pairs[line] = 1
+            else:
+                pairs[line] += 1
+                complete += 1
+            total += 1
 
-blast_results = parse_blast_output(f"{finder.outdir}/all_reads_blast.txt")
-
-id_dict = {}
-for br in blast_results:
-    n = br.query[:-1]
-    if n not in id_dict:
-        id_dict[n] = 1
-    else:
-        id_dict[n] += 1
-
-potential_pairs = set([x for x in id_dict if id_dict[x] == 4])
+print(f"Number of complete pairs {complete} out of {total}, {complete/total}")
