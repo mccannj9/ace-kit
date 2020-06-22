@@ -8,7 +8,7 @@ import pickle
 from kit.finder import SwitchpointFinder
 from kit.utils import revcomp, remove_gaps_and_adjust_boundary
 from kit.blast import get_blast_hits_with_orientation, quick_blastn
-from kit.blast import set_blast_result_orientation, parse_blast_output
+from kit.blast import set_result_orientation, parse_blast_output
 
 parser = argparse.ArgumentParser()
 
@@ -87,7 +87,7 @@ orient_out = f"{finder.outdir}/orientation_blast.txt"
 quick_blastn(query, subject, orient_out)
 blast_results = parse_blast_output(orient_out)
 for res in blast_results:
-    set_blast_result_orientation(res)
+    set_result_orientation(res)
 br_sorted = sorted(
     blast_results,
     key=lambda element: (element.subject, element.orientation)
@@ -101,6 +101,10 @@ for res in results_list:
             res.blast_results.append(br)
     if len(res.blast_results) == res.n * 2:
         keep_results.append(res)
+
+
+
+
 results = finder.results
 
 boundary_read_prefixes = set([y.name[:-1] for x,y in all_reads.items() if y.boundary])

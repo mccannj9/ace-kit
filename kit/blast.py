@@ -98,6 +98,6 @@ def get_blast_hits_with_orientation(fasta:str, out:str=f"{output_dir}/boundary_b
     blast_res = parse_blast_output(retval)
 
     for hit in blast_res:
-        set_blast_result_orientation(hit)
+        set_result_orientation(hit)
 
     return blast_res

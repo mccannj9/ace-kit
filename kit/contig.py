@@ -3,7 +3,6 @@ import re
 
 from dataclasses import dataclass
 from typing import List
-from collections import namedtuple
 from operator import attrgetter
 
 import numpy
@@ -13,7 +12,6 @@ from matplotlib import pyplot
 from logomaker import Logo
 
 from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
-from kit.utils import create_logo
 
 pyplot.style.use('bmh')
 
@@ -105,9 +103,8 @@ def get_sequences_for_contig(ctg):
     return seqs
 
 
-
 class Contig(object):
-    def __init__(self, lines:StringVector):
+    def __init__(self, lines: StringVector):
         # just initializing values so editor doesn't complain
         self.length = 0
         self.nreads = 0
