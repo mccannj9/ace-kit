@@ -15,36 +15,6 @@ SingleResult = namedtuple(
 )
 
 
-@dataclass
-class Result:
-    contig: Contig
-    candidates: numpy.ndarray
-    derivatives: numpy.ndarray
-    n: int = 0
-    blast_results: list = field(default_factory=list)
-    logos: list = field(default_factory=list)
-
-    def __lt__(self, other):
-        return self.n < other.n
-
-    def max_mag_derivative(self):
-        return numpy.abs(self.derivatives.max())
-
-    def write_contig_boundaries_as_fasta(self, filename:str):
-        with open(filename, 'w') as fasta:
-            for c in numpy.flatnonzero(self.candidates):
-                pos = c - self.contig.shift
-                dx = self.derivatives[c]
-
-                if dx > 0:
-                    seq = self.contig.seq[pos:pos+30].replace("*", "")
-                    side = "l"
-                else:
-                    seq = self.contig.seq[pos+1-30:pos+1].replace("*", "")
-                    side = "r"
-                print(f">{self.contig.name}_{c}_{pos}_{side}\n{seq}", file=fasta)
-
-
 class SwitchpointFinder:
     def __init__(
         self, input_fn, outdir="./", window_size=7, min_depth=10, min_read_prop=0.01
@@ -57,52 +27,50 @@ class SwitchpointFinder:
         self.outdir = outdir
         self.results = {}
 
-    def fit(self):
-        contig_dict = {}
+    # def fit(self):
+    #     contig_dict = {}
 
-        with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
-            all_reads = {}
-            for _ in range(self.acefile.ncontigs):
-                self.current_ctg = next(self.acefile)
-                ctg = self.current_ctg
-                for read in self.current_ctg.reads:
-                    all_reads[read.name] = read
-                if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
-                    print(self.current_ctg.name)
-                    cands, derivs = self.find_candidates()
-                    contig_dict[self.current_ctg.name] = Result(ctg, cands, derivs)
-                    self.generate_output_for_boundaries(cands, derivs)
+    #     with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
+    #         all_reads = {}
+    #         for _ in range(self.acefile.ncontigs):
+    #             self.current_ctg = next(self.acefile)
+    #             ctg = self.current_ctg
+    #             for read in self.current_ctg.reads:
+    #                 all_reads[read.name] = read
+    #             if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
+    #                 print(self.current_ctg.name)
+    #                 cands, derivs = self.find_candidates()
+    #                 contig_dict[self.current_ctg.name] = Result(ctg, cands, derivs)
+    #                 self.generate_output_for_boundaries(cands, derivs)
 
-                    for i in numpy.flatnonzero(cands):
-                        d = derivs[i]
-                        reads = get_reads_from_candidate(ctg, i)
-                        for read in reads:
-                            read.side = -numpy.sign(d).astype(int)
-                            all_reads[read.name] = read
-                        self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
+    #                 for i in numpy.flatnonzero(cands):
+    #                     d = derivs[i]
+    #                     reads = get_reads_from_candidate(ctg, i)
+    #                     for read in reads:
+    #                         read.side = -numpy.sign(d).astype(int)
+    #                         all_reads[read.name] = read
+    #                     self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
 
-        for k in contig_dict:
-            contig_dict[k].n = contig_dict[k].candidates.nonzero()[0].size
+    #     for k in contig_dict:
+    #         contig_dict[k].n = contig_dict[k].candidates.nonzero()[0].size
 
-        return contig_dict, all_reads
-
+    #     return contig_dict, all_reads
 
     def fit_new(self):
         contigs_list = []
 
         with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
+            all_reads = {}
             for _ in range(self.acefile.ncontigs):
                 self.current_ctg = next(self.acefile)
-
+                all_reads.update({x.name: x for x in self.current_ctg.reads})
                 if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
                     print(self.current_ctg.name)
                     cands, derivs = self.find_candidates()
-                    # contig_dict[self.current_ctg.name] = self.current_ctg
                     self.generate_output_for_boundaries(cands, derivs)
                     contigs_list.append(self.current_ctg)
 
-        return contigs_list
-
+        return contigs_list, all_reads
 
     def generate_output_for_boundaries(self, cands, slopes):
         ctg = self.current_ctg

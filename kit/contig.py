@@ -58,6 +58,9 @@ class Read:
         return len(self.seq)
 
 
+ReadsVec = List[Read]
+
+
 @dataclass
 class Pair:
     f: Read
@@ -225,7 +228,7 @@ class Contig(object):
         else:
             unmasked_data = self.unmasked
             masked_data = self.masked
-        depth =  unmasked_data + masked_data
+        depth = unmasked_data + masked_data
 
         ax.set_ylabel('No. of Sites')
 
@@ -318,6 +321,26 @@ class Boundary:
         return "l" if self.side == 1 else "r"
 
     def boundary_seq_as_fasta(self):
-        pos = self.pos - self.contig.shift
         return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
 
+    def get_reads_from_boundary(self):
+        reads = []
+        for r in self.contig.reads:
+            b = r.start
+            e = r.start + r.length
+            if ((self.pos - self.contig.shift) in range(b, e)):
+                reads.append(r)
+        return reads
+
+    def get_mate_pairs(self, reads: ReadsVec):
+        all_reads = {x.name: x for x in self.contig.reads}
+        pairs_dict = {}
+
+        for r in reads:
+            r_end = r.name[-1]
+            mate_end = "f" if r_end == "f" else "r"
+            mate_id = f"{r.name[:-1]}{mate_end}"
+            if mate_id in all_reads:
+                if r.name[:-1] not in pairs_dict:
+                    pairs_dict[r.name[:-1]] = [r, all_reads[mate_id]]
+                    pairs_dict[r.name[:-1]].sort(key=lambda x: x.name[:-1])

@@ -4,7 +4,6 @@ import os
 import glob
 import sys
 import argparse
-import pickle
 
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
@@ -48,7 +47,7 @@ keyword_args = {
 acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
 
 finder = SwitchpointFinder(acefile, args.output_dir, **keyword_args)
-contigs = finder.fit_new()
+contigs, all_reads = finder.fit_new()
 
 sorted_contigs = sorted(
     contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
@@ -80,7 +79,7 @@ if two:
     ref_l, ref_r = reference.boundaries
 
 else:
-    print(f"Method for two boundaries in different contigs not ready yet")
+    print("Method for two boundaries in different contigs not ready yet")
     sys.exit(0)
 
 boundaries = []
@@ -125,20 +124,17 @@ with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
 # paired reads analysis
 
 subject_prefix = f"{finder.outdir}/boundaries"
-reads_fn = f"{args.input_dir}/reads.fas"
+reads_fn = f"{args.input_dir}/reads.ids"
 
-with open(reads_fn) as reads:
-    pairs = {}
-    complete = 0
-    total = 0
-    for line in reads:
-        if line.startswith(">"):
-            line = line.strip()[1:-1]
-            if line not in pairs:
-                pairs[line] = 1
-            else:
-                pairs[line] += 1
-                complete += 1
-            total += 1
+with open(reads_fn) as read_ids:
+    read_ids = read_ids.read().strip().split()
+    unique = set([x[:-1] for x in read_ids])
+    total = len(read_ids)
+    complete = total - len(unique)
 
 print(f"Number of complete pairs {complete} out of {total}, {complete/total}")
+
+boundary_reads = []
+for b in boundaries:
+    boundary_reads += b.get_reads_from_boundary()
+    # pairs = b.get_mate_pairs(reads)
