@@ -7,6 +7,7 @@ import argparse
 
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
+from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
 
 parser = argparse.ArgumentParser()
 
@@ -30,6 +31,10 @@ parser.add_argument(
     '-r', '--min-read-prop', required=False, default=0.01, type=float
 )
 
+parser.add_argument(
+    '-l', '--log-file', required=False, default=None
+)
+
 args = parser.parse_args()
 
 try:
@@ -37,6 +42,12 @@ try:
 
 except FileExistsError:
     pass
+
+if args.log_file:
+    log = open(f"{args.output_dir}/{args.log_file}", 'w')
+
+else:
+    log = sys.stderr
 
 keyword_args = {
     'window_size': args.window_size,
@@ -63,6 +74,7 @@ two = True if sorted_contigs[0].nboundaries == 2 else False
 if not(at_least_two):
     print("Not enough boundaries found in contigs")
     # run was still a success, just no boundaries ;)
+    print("No boundaries found", file=log)
     sys.exit(0)
 
 # building database from top contig with two boundaries
@@ -77,64 +89,65 @@ if two:
             print(b.boundary_seq_as_fasta(), file=fasta)
 
     ref_l, ref_r = reference.boundaries
+    orient_boundaries = True
 
 else:
-    print("Method for two boundaries in different contigs not ready yet")
-    sys.exit(0)
+    print("Method for two boundaries in different contigs not ready yet", file=log)
+    # sys.exit(0)
+    orient_boundaries = False
 
 boundaries = []
 for c in sorted_contigs:
     boundaries += c.boundaries
 
-query = f"{finder.outdir}/boundaries_from_contigs.fas"
-subject = outname
-orient_out = f"{finder.outdir}/orientation_blast.txt"
-quick_blastn(query, subject, orient_out)
+if orient_boundaries:
+    query = f"{finder.outdir}/boundaries_from_contigs.fas"
+    subject = outname
+    orient_out = f"{finder.outdir}/orientation_blast.txt"
+    quick_blastn(query, subject, orient_out)
 
-blast_results = parse_blast_output(orient_out)
-for res in blast_results:
-    set_result_orientation(res)
+    blast_results = parse_blast_output(orient_out)
+    for res in blast_results:
+        set_result_orientation(res)
 
-# don't look at first two boundaries, they are the reference
-boundary_blasts = {}
-for b in boundaries[2:]:
-    boundary_blasts[b.name] = sorted(
-        [x for x in blast_results if b.name == x.query], key=lambda b: b.subject
-    )
-    orients = [x.orientation for x in boundary_blasts[b.name]]
-    if orients == [ref_l.orient, ref_r.orient]:
-        print('left side')
-        b.orient = ref_l.orient
-    else:
-        print('right side')
-        b.orient = ref_r.orient
+    # don't look at first two boundaries, they are the reference
+    boundary_blasts = {}
+    for b in boundaries[2:]:
+        boundary_blasts[b.name] = sorted(
+            [x for x in blast_results if b.name == x.query], key=lambda b: b.subject
+        )
+        orients = [x.orientation for x in boundary_blasts[b.name]]
+        if orients == [ref_l.orient, ref_r.orient]:
+            print('left side')
+            b.orient = ref_l.orient
+        else:
+            print('right side')
+            b.orient = ref_r.orient
 
+    with open(f"{finder.outdir}/boundaries_left.fas", 'w') as fasta:
+        for b in boundaries:
+            if b.orient == 1.0:
+                print(b.boundary_seq_as_fasta(), file=fasta)
 
-with open(f"{finder.outdir}/boundaries_left.fas", 'w') as fasta:
-    for b in boundaries:
-        if b.orient == 1.0:
-            print(b.boundary_seq_as_fasta(), file=fasta)
-
-with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
-    for b in boundaries:
-        if b.orient == -1.0:
-            print(b.boundary_seq_as_fasta(), file=fasta)
+    with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
+        for b in boundaries:
+            if b.orient == -1.0:
+                print(b.boundary_seq_as_fasta(), file=fasta)
 
 
 # paired reads analysis
 
-subject_prefix = f"{finder.outdir}/boundaries"
-reads_fn = f"{args.input_dir}/reads.ids"
+boundary_reads = find_all_boundary_reads(boundaries)
+paired_boundary_reads = pair_boundary_reads(boundary_reads, all_reads)
+oriented_pairs = pairs_with_correct_orient(paired_boundary_reads)
 
-with open(reads_fn) as read_ids:
-    read_ids = read_ids.read().strip().split()
-    unique = set([x[:-1] for x in read_ids])
-    total = len(read_ids)
-    complete = total - len(unique)
+with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
+    for k in oriented_pairs:
+        l, r = oriented_pairs[k]
+        lout = f'>{l.name} {l.ctg} {l.comp} {int(l.side)}\n{l.seq.replace("*", "")}'
+        rout = f'>{r.name} {r.ctg} {r.comp} {int(r.side)}\n{r.seq.replace("*", "")}'
+        print(lout, file=fasta)
+        print(rout, file=fasta)
 
-print(f"Number of complete pairs {complete} out of {total}, {complete/total}")
-
-boundary_reads = []
-for b in boundaries:
-    boundary_reads += b.get_reads_from_boundary()
-    # pairs = b.get_mate_pairs(reads)
+perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
+print(f"Percent Oriented Pairs: {perc_oriented}", file=log)
