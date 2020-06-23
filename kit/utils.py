@@ -26,6 +26,7 @@ rc = {
     'N': 'N'
 }
 
+
 def revcomp(seq):
     seq = seq.replace('*', '-')
     return "".join([rc[x] for x in seq[::-1]])
@@ -159,3 +160,39 @@ def remove_gaps_and_adjust_boundary(read):
 
 def sign(x):
     return 1 - (x <= 0)
+
+
+def find_all_boundary_reads(boundaries):
+    boundary_reads = {}
+    for b in boundaries:
+        reads_on_b = b.get_reads_from_boundary()
+        for read in reads_on_b:
+            read.boundary = 1
+            read.side = b.side
+        boundary_reads.update({x.name: x for x in reads_on_b})
+
+    return boundary_reads
+
+
+def pair_boundary_reads(boundary_reads, all_reads):
+    paired_boundary = {}
+    for br in boundary_reads:
+        if br[:-1] in paired_boundary:
+            continue
+        else:
+            other_end = "f" if br[-1] == "r" else "r"
+            other_id = f"{br[:-1]}{other_end}"
+            if other_id in all_reads:
+                paired_boundary[br[:-1]] = [boundary_reads[br], all_reads[other_id]]
+                paired_boundary[br[:-1]].sort(key=lambda x: x.name[-1])
+
+    return paired_boundary
+
+
+def pairs_with_correct_orient(paired_reads_dict):
+    oriented = {}
+    for x in paired_reads_dict:
+        l, r = paired_reads_dict[x]
+        if l.comp != r.comp:
+            oriented[x] = (l, r)
+    return oriented
