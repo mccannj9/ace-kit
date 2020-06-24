@@ -67,15 +67,16 @@ sorted_contigs = sorted(
 sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
 
 nboundaries_found = sum([c.nboundaries for c in sorted_contigs])
-at_least_two = True if nboundaries_found > 0 else False
-# check if two boundaries were found in one contig
-two = True if sorted_contigs[0].nboundaries == 2 else False
 
-if not(at_least_two):
+if not(nboundaries_found):
     print("Not enough boundaries found in contigs")
     # run was still a success, just no boundaries ;)
     print("No boundaries found", file=log)
     sys.exit(0)
+
+# at_least_two = True if nboundaries_found > 0 else False
+# check if two boundaries were found in one contig
+two = True if sorted_contigs[0].nboundaries == 2 else False
 
 # building database from top contig with two boundaries
 if two:
@@ -150,4 +151,5 @@ with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
         print(rout, file=fasta)
 
 perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
-print(f"Percent Oriented Pairs: {perc_oriented}", file=log)
+print(f"Oriented Pairs: {len(oriented_pairs)}", file=log)
+print(f"Total Paired with 1 Boundary: {len(paired_boundary_reads)}", file=log)
