@@ -129,11 +129,12 @@ class CSmithWaterman:
         self.parameters_set = False
 
     def set_alignment_params(self, **kwargs):
-        for kw in kwargs:
-            if kw in self.parameters and not(self.parameters[kw]):
-                self.__dict__[kw] = kwargs[kw]
-                self.parameters[kw] = 1
+        for k in kwargs:
+            if k in self.parameters and not(self.parameters[k]):
+                self.__dict__[k] = kwargs[k]
+                self.parameters[k] = 1
 
+        # if a particular parameter is not set - use default
         for p in self.parameters:
             if not(self.parameters[p]):
                 self.__dict__[p] = default_alignment_parameters[p]
@@ -144,6 +145,18 @@ class CSmithWaterman:
         )
 
         self.parameters_set = True
+
+    def reset_parameters(self, **kwargs):
+        # unset parameters and remove them as members of object
+        if not(kwargs):
+            for k in self.parameters:
+                self.parameters[k] = 0
+                self.__dict__.pop(k)
+        else:
+            # simply set parameters in kwargs and leave others alone
+            for k in kwargs:
+                if k in self.parameters:
+                    self.__dict__[k] = kwargs[k]
 
     def align_sequence_pair(self, query, target):
         if not(self.parameters_set):
