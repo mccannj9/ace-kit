@@ -1,5 +1,6 @@
 
 from collections import namedtuple
+from dataclasses import dataclass, field
 
 import numpy
 
@@ -7,9 +8,8 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.utils import create_logo, extract_seqs, get_reads_from_candidate
+from kit.contig import Contig, Boundary
 
-
-Result = namedtuple('Result', ('contig', 'candidates', 'derivatives'))
 SingleResult = namedtuple(
     'Result', ('contig', 'position', 'dvalue', 'depth', 'reads')
 )
@@ -27,70 +27,67 @@ class SwitchpointFinder:
         self.outdir = outdir
         self.results = {}
 
-    def fit(self):
-        contig_dict = {}
+    # def fit(self):
+    #     contig_dict = {}
+
+    #     with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
+    #         all_reads = {}
+    #         for _ in range(self.acefile.ncontigs):
+    #             self.current_ctg = next(self.acefile)
+    #             ctg = self.current_ctg
+    #             for read in self.current_ctg.reads:
+    #                 all_reads[read.name] = read
+    #             if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
+    #                 print(self.current_ctg.name)
+    #                 cands, derivs = self.find_candidates()
+    #                 contig_dict[self.current_ctg.name] = Result(ctg, cands, derivs)
+    #                 self.generate_output_for_boundaries(cands, derivs)
+
+    #                 for i in numpy.flatnonzero(cands):
+    #                     d = derivs[i]
+    #                     reads = get_reads_from_candidate(ctg, i)
+    #                     for read in reads:
+    #                         read.side = -numpy.sign(d).astype(int)
+    #                         all_reads[read.name] = read
+    #                     self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
+
+    #     for k in contig_dict:
+    #         contig_dict[k].n = contig_dict[k].candidates.nonzero()[0].size
+
+    #     return contig_dict, all_reads
+
+    def fit_new(self):
+        contigs_list = []
 
         with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
             all_reads = {}
             for _ in range(self.acefile.ncontigs):
-                ctg = next(self.acefile)
-                for read in ctg.reads:
-                    all_reads[read.name] = read
-                if ctg.nreads / self.acefile.nreads > self.min_read_prop:
-                    print(ctg.name)
-                    cands, derivs = self.find_candidates(ctg)
-                    contig_dict[ctg.name] = Result(ctg, cands, derivs)
-                    self.write_and_plot_results(contig_dict[ctg.name])
-                    for i in numpy.flatnonzero(cands):
-                        d = derivs[i]
-                        reads = get_reads_from_candidate(ctg, i)
-                        for read in reads:
-                            read.side = -numpy.sign(d).astype(int)
-                            all_reads[read.name] = read
-                        self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
+                self.current_ctg = next(self.acefile)
+                all_reads.update({x.name: x for x in self.current_ctg.reads})
+                if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
+                    print(self.current_ctg.name)
+                    cands, derivs = self.find_candidates()
+                    self.generate_output_for_boundaries(cands, derivs)
+                    contigs_list.append(self.current_ctg)
 
+        return contigs_list, all_reads
 
-        return contig_dict, all_reads
+    def generate_output_for_boundaries(self, cands, slopes):
+        ctg = self.current_ctg
+        contig_plot = ctg.generate_figure()
+        for c, d in zip(numpy.flatnonzero(cands), slopes[cands]):
+            boundary = Boundary(ctg, c, numpy.sign(d), abs(d))
+            boundary.set_boundary_sequence()
+            ctg.boundaries.append(boundary)
+            print(boundary.boundary_seq_as_fasta(), file=self.fasta)
+            logo_out = f"{self.outdir}/{ctg.name}_{boundary.side_as_l_or_r()}_logo.png"
+            boundary.set_logo(save=logo_out)
+            ctg.add_candidate_switchpoint_to_fig(contig_plot, c)
+            contig_plot.savefig(f"{self.outdir}/{ctg.name}.png")
+        pyplot.close(contig_plot)
 
-    def write_and_plot_results(self, result:Result):
-        contig = result.contig
-        fig = contig.generate_figure()
-        max_dp = contig.depth.max()
-
-        for i in numpy.flatnonzero(result.candidates):
-            dx = result.derivatives[i]
-            pos = i - contig.shift
-
-            if dx > 0:
-                seq = contig.seq[pos:pos+30].replace("*", "-")
-            else:
-                seq = contig.seq[pos+1-30:pos+1].replace("*", "-")
-
-            print(f">{contig.name}_{i}_{pos}_{round(dx)}\n{seq}", file=self.fasta)
-
-            for _, ax in enumerate(fig.axes):
-                ax.vlines(contig.min + i, 0, max_dp, linestyles='dotted')
-
-        fig.savefig(f"{self.outdir}/{contig.name}.png")
-        pyplot.close(fig)
-
-        candidates = numpy.flatnonzero(result.candidates)
-        derivatives = result.derivatives[candidates]
-        _, read_ids, pos, neg = extract_seqs(contig, candidates, derivatives)
-
-        if pos:
-            _, fig = create_logo(pos)
-            fig.savefig(f"{self.outdir}/{contig.name}_l_logo.png")
-            pyplot.close(fig)
-
-        if neg:
-            _, fig = create_logo(neg)
-            fig.savefig(f"{self.outdir}/{contig.name}_r_logo.png")
-            pyplot.close(fig)
-
-        return read_ids
-
-    def find_candidates(self, contig):
+    def find_candidates(self):
+        contig = self.current_ctg
         dmask = contig.depth > self.min_depth
         diff = contig.unmasked - contig.masked
         s = numpy.sign(diff)
@@ -115,5 +112,6 @@ class SwitchpointFinder:
         derivatives_mask = numpy.zeros(shape=derivatives.shape)
         derivatives_mask[min_der_idx] = 1
         derivatives_mask[max_der_idx] = 1
+        candidates = sc * dmask * derivatives_mask
 
-        return sc * dmask * derivatives_mask, derivatives
+        return candidates.astype(bool), derivatives

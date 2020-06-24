@@ -3,14 +3,15 @@ import re
 
 from dataclasses import dataclass
 from typing import List
-from collections import namedtuple
 from operator import attrgetter
 
 import numpy
+import logomaker
 
 from matplotlib import pyplot
+from logomaker import Logo
 
-from kit.utils import compute_end_pos, window, rc
+from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
 
 pyplot.style.use('bmh')
 
@@ -55,6 +56,9 @@ class Read:
 
     def __len__(self):
         return len(self.seq)
+
+
+ReadsVec = List[Read]
 
 
 @dataclass
@@ -102,9 +106,8 @@ def get_sequences_for_contig(ctg):
     return seqs
 
 
-
 class Contig(object):
-    def __init__(self, lines:StringVector):
+    def __init__(self, lines: StringVector):
         # just initializing values so editor doesn't complain
         self.length = 0
         self.nreads = 0
@@ -113,6 +116,7 @@ class Contig(object):
 
         intro = lines[0]
         self.lines = lines
+        self.boundaries = []
 
         matches = regex.match(intro).groupdict()
         for m in matches:
@@ -193,6 +197,14 @@ class Contig(object):
         self.average_rd = self.depth.mean()
 
     @property
+    def nboundaries(self):
+        return len(self.boundaries)
+
+    @property
+    def boundary_rate_sum(self):
+        return sum([x.rate for x in self.boundaries])
+
+    @property
     def name(self):
         return f"CL{self.cluster}Contig{self.number}"
 
@@ -216,7 +228,7 @@ class Contig(object):
         else:
             unmasked_data = self.unmasked
             masked_data = self.masked
-        depth =  unmasked_data + masked_data
+        depth = unmasked_data + masked_data
 
         ax.set_ylabel('No. of Sites')
 
@@ -237,24 +249,98 @@ class Contig(object):
     def generate_figure(self, fs=(6, 4), filename=None, **kwargs):
         fig, ax = pyplot.subplots(1, figsize=fs)
         self.plot_profile(ax)
-        # self.plot_profile(ax[1], window_size=3)
-        # self.plot_profile(ax[2], window_size=5)
         fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
-        # fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         if filename:
             fig.savefig(filename, **kwargs)
         return fig
 
-    def add_candidate_switchpoints_to_fig(self, fig, candidates):
-        b, e = candidates
-        # gets max depth for drawing the line
-        ymax = (self.unmasked + self.masked).max()
-        for i, ax in enumerate(fig.axes):
-            ax.vlines(self.min + b, 0, ymax, linestyles='dotted')
-            ax.vlines(self.max + e - (2*i + 1), 0, ymax, linestyles='dotted')
+    def add_candidate_switchpoint_to_fig(self, fig, candidate):
+
+        ymax = self.depth.max()
+        for ax in fig.axes:
+            ax.vlines(self.min + candidate, 0, ymax, linestyles='dotted')
 
     def __repr__(self):
         return f"id={self.name}: len={self.length}, nreads={self.nreads}"
 
     def __len__(self):
         return self.length
+
+    def get_reads_with_position(self, pos, slope, l=30):
+        seqs = []
+        for r in self.reads:
+            b = r.start
+            e = r.start + r.length
+            if ((pos - self.shift) in range(b, e)):
+                p = pos - self.shift - b
+                seq = r.seq.replace("*", "-")
+                if slope > 0:
+                    seqs.append(seq[p:p+l])
+                else:
+                    seqs.append(seq[p-l+1:p+1])
+        # this removes those reads which do not have length == l
+        # otherwise dataframe is messed up
+        return [x for x in seqs if len(x) == l]
+
+
+@dataclass
+class Boundary:
+    contig: Contig
+    pos: int
+    side: int
+    rate: float
+    logo: Logo = None
+    orient: int = 0
+    seq: str = ""
+
+    @property
+    def name(self):
+        return f"{self.contig.name}_{self.side_as_l_or_r()}"
+
+    def set_boundary_sequence(self, l=30):
+        pos = self.pos - self.contig.shift
+        if self.side == 1:
+            self.seq = self.contig.seq[pos:pos+l].replace("*", "")
+        else:
+            self.seq = self.contig.seq[pos+1-l:pos+1].replace("*", "")
+
+    def set_logo(self, l=30, figsize=(10, 2.5), save=None):
+        seqs = self.contig.get_reads_with_position(self.pos, self.side * self.rate, l=30)
+        df = create_seqlogo_dataframe(seqs)
+
+        fig, ax = pyplot.subplots(1, figsize=figsize)
+        self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
+        self.logo.style_xticks(anchor=0, spacing=5, rotation=45)
+        self.logo.ax.set_xlim([-1, len(df)])
+        self.logo.ax.set_ylabel('information (bits)')
+
+        if save:
+            fig.savefig(save)
+
+    def side_as_l_or_r(self):
+        return "l" if self.side == 1 else "r"
+
+    def boundary_seq_as_fasta(self):
+        return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
+
+    def get_reads_from_boundary(self):
+        reads = []
+        for r in self.contig.reads:
+            b = r.start
+            e = r.start + r.length
+            if ((self.pos - self.contig.shift) in range(b, e)):
+                reads.append(r)
+        return reads
+
+    def get_mate_pairs(self, reads: ReadsVec):
+        all_reads = {x.name: x for x in self.contig.reads}
+        pairs_dict = {}
+
+        for r in reads:
+            r_end = r.name[-1]
+            mate_end = "f" if r_end == "f" else "r"
+            mate_id = f"{r.name[:-1]}{mate_end}"
+            if mate_id in all_reads:
+                if r.name[:-1] not in pairs_dict:
+                    pairs_dict[r.name[:-1]] = [r, all_reads[mate_id]]
+                    pairs_dict[r.name[:-1]].sort(key=lambda x: x.name[:-1])
