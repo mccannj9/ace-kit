@@ -1,5 +1,6 @@
 
 import os
+import inspect
 import ctypes
 import numpy
 
@@ -62,7 +63,12 @@ class CAlignmentResult(ctypes.Structure):
 
 class CStripedSmithWaterman:
 
-    def __init__(self, path_to_libssw, library_filename="libssw.so", debug=True):
+    def __init__(self, path_to_libssw=None, library_filename="libssw.so", debug=True):
+        if not(path_to_libssw):
+            modframe = inspect.currentframe()
+            filename = inspect.getframeinfo(modframe).filename
+            path_to_libssw = f"{os.path.split(filename)[0]}/src"
+
         self.path = path_to_libssw
         self.full_path = os.path.join(self.path, library_filename)
 
