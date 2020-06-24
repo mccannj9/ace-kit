@@ -58,7 +58,7 @@ keyword_args = {
 acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
 
 finder = SwitchpointFinder(acefile, args.output_dir, **keyword_args)
-contigs, all_reads = finder.fit_new()
+contigs, all_reads = finder.fit()
 
 sorted_contigs = sorted(
     contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True

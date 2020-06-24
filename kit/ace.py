@@ -3,7 +3,7 @@ from kit.contig import Contig
 
 
 class AceFile(object):
-    def __init__(self, filename:str):
+    def __init__(self, filename: str):
         self.filename = filename
         self.file = open(filename)
         as_line = self.file.readline().strip().split()
