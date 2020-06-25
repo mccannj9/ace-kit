@@ -175,13 +175,13 @@ def find_all_boundary_reads(boundaries):
     return boundary_reads
 
 
-def pair_boundary_reads(boundary_reads, all_reads):
+def pair_boundary_reads(boundary_reads, all_reads, suffix_1="f", suffix_2="r"):
     paired_boundary = {}
     for br in boundary_reads:
         if br[:-1] in paired_boundary:
             continue
         else:
-            other_end = "f" if br[-1] == "r" else "r"
+            other_end = suffix_1 if br[-1] == suffix_2 else suffix_2
             other_id = f"{br[:-1]}{other_end}"
             if other_id in all_reads:
                 paired_boundary[br[:-1]] = [boundary_reads[br], all_reads[other_id]]

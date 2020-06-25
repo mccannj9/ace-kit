@@ -336,11 +336,18 @@ class Boundary:
     def boundary_seq_as_fasta(self):
         return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
 
-    def get_reads_from_boundary(self):
+    def get_reads_from_boundary(self, buffer=0):
         reads = []
         for r in self.contig.reads:
             b = r.start
             e = r.start + r.length
+            # read_range = range(b, e)
+            # true_pos = self.pos - self.contig.shift
+            # contig_range = range(true_pos, true_pos + buffer)
+            # overlap = range(
+            #     max(read_range[0], contig_range[0]), max(read_range[-1], contig_range[-1])
+            # )
+            # if overlap.start < overlap.stop:
             if ((self.pos - self.contig.shift) in range(b, e)):
                 reads.append(r)
         return reads
