@@ -12,6 +12,8 @@ from matplotlib import pyplot
 from logomaker import Logo
 
 from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
+from kit.html import table_row_template
+
 
 pyplot.style.use('bmh')
 
@@ -286,7 +288,9 @@ class Contig(object):
 @dataclass
 class Boundary:
     contig: Contig
+    contig_name: str
     pos: int
+    depth: int
     side: int
     rate: float
     logo: Logo = None
@@ -296,6 +300,14 @@ class Boundary:
     @property
     def name(self):
         return f"{self.contig.name}_{self.side_as_l_or_r()}"
+
+    # @property
+    # def contig_name(self):
+    #     return self.contig.name
+
+    # @property
+    # def depth(self):
+    #     return self.contig.depth[self.pos]
 
     def set_boundary_sequence(self, l=30):
         pos = self.pos - self.contig.shift
@@ -316,6 +328,7 @@ class Boundary:
 
         if save:
             fig.savefig(save)
+            self.logo_path = save
 
     def side_as_l_or_r(self):
         return "l" if self.side == 1 else "r"
@@ -344,3 +357,11 @@ class Boundary:
                 if r.name[:-1] not in pairs_dict:
                     pairs_dict[r.name[:-1]] = [r, all_reads[mate_id]]
                     pairs_dict[r.name[:-1]].sort(key=lambda x: x.name[:-1])
+
+    def table_row_template(self):
+        d = self.__dict__
+        d['side'] = self.side_as_l_or_r()
+        d['side'] = "left" if d['side'] == "l" else "right"
+        d['pos'] = self.pos - self.contig.shift
+        d['rate'] = round(d['rate'], 1)
+        return table_row_template.safe_substitute(d)

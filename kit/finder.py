@@ -1,18 +1,10 @@
 
-from collections import namedtuple
-from dataclasses import dataclass, field
-
 import numpy
 
 from matplotlib import pyplot
 
 from kit.ace import AceFile
-from kit.utils import create_logo, extract_seqs, get_reads_from_candidate
-from kit.contig import Contig, Boundary
-
-SingleResult = namedtuple(
-    'Result', ('contig', 'position', 'dvalue', 'depth', 'reads')
-)
+from kit.contig import Boundary
 
 
 class SwitchpointFinder:
@@ -27,36 +19,7 @@ class SwitchpointFinder:
         self.outdir = outdir
         self.results = {}
 
-    # def fit(self):
-    #     contig_dict = {}
-
-    #     with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
-    #         all_reads = {}
-    #         for _ in range(self.acefile.ncontigs):
-    #             self.current_ctg = next(self.acefile)
-    #             ctg = self.current_ctg
-    #             for read in self.current_ctg.reads:
-    #                 all_reads[read.name] = read
-    #             if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
-    #                 print(self.current_ctg.name)
-    #                 cands, derivs = self.find_candidates()
-    #                 contig_dict[self.current_ctg.name] = Result(ctg, cands, derivs)
-    #                 self.generate_output_for_boundaries(cands, derivs)
-
-    #                 for i in numpy.flatnonzero(cands):
-    #                     d = derivs[i]
-    #                     reads = get_reads_from_candidate(ctg, i)
-    #                     for read in reads:
-    #                         read.side = -numpy.sign(d).astype(int)
-    #                         all_reads[read.name] = read
-    #                     self.results[ctg.name] = SingleResult(ctg, i, d, ctg.depth[i], reads)
-
-    #     for k in contig_dict:
-    #         contig_dict[k].n = contig_dict[k].candidates.nonzero()[0].size
-
-    #     return contig_dict, all_reads
-
-    def fit_new(self):
+    def fit(self):
         contigs_list = []
 
         with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
@@ -76,7 +39,8 @@ class SwitchpointFinder:
         ctg = self.current_ctg
         contig_plot = ctg.generate_figure()
         for c, d in zip(numpy.flatnonzero(cands), slopes[cands]):
-            boundary = Boundary(ctg, c, numpy.sign(d), abs(d))
+
+            boundary = Boundary(ctg, ctg.name, c, ctg.depth[c], numpy.sign(d), abs(d))
             boundary.set_boundary_sequence()
             ctg.boundaries.append(boundary)
             print(boundary.boundary_seq_as_fasta(), file=self.fasta)

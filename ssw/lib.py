@@ -12,6 +12,11 @@ base_to_int = {x: i for i, x in enumerate(bases)}
 int_to_base = {i: x for i, x in enumerate(bases)}
 
 
+default_alignment_parameters = {
+    'match': 2, 'mismatch': 2, 'gap_open': 3, 'gap_extend': 1, 'nflag': 2
+}
+
+
 def seq_to_int_array(seq):
     c_seq_array_dec = len(seq) * ctypes.c_int8
     c_seq_array = c_seq_array_dec()
@@ -61,7 +66,7 @@ class CAlignmentResult(ctypes.Structure):
     ] 
 
 
-class CStripedSmithWaterman:
+class CSmithWaterman:
 
     def __init__(self, path_to_libssw=None, library_filename="libssw.so", debug=True):
         if not(path_to_libssw):
@@ -117,24 +122,62 @@ class CStripedSmithWaterman:
         self.align_destroy.argtypes = [ctypes.POINTER(CAlignmentResult)]
         self.align_destroy.restype = None
 
+        self.parameters = {
+            'match': 0, 'mismatch': 0, 'gap_open': 0, 'gap_extend': 0, 'nflag': 0
+        }
 
-def try_alignment(path, query, target):
-    match, mismatch = 2, 2
-    mat = build_score_matrix(len(bases), match, mismatch)
-    ssw = CStripedSmithWaterman(path)
-    q = seq_to_int_array(query)
-    t = seq_to_int_array(target)
+        self.parameters_set = False
 
-    qprof = ssw.ssw_init(
-        q, ctypes.c_int32(len(q)), mat, len(bases), 2
-    )
-    gap_open = 3
-    gap_extend = 1
-    nflag = 2
-    mask_length = len(query) // 2 if len(query) >= 30 else 15
+    def set_alignment_params(self, **kwargs):
+        for k in kwargs:
+            if k in self.parameters and not(self.parameters[k]):
+                self.__dict__[k] = kwargs[k]
+                self.parameters[k] = 1
 
-    res = ssw.ssw_align(
-        qprof, t, ctypes.c_int32(len(t)), gap_open, gap_extend, nflag, 0, 0, mask_length
-    )
+        # if a particular parameter is not set - use default
+        for p in self.parameters:
+            if not(self.parameters[p]):
+                self.__dict__[p] = default_alignment_parameters[p]
+                self.parameters[p] = 1
 
-    return res
+        self.scoring = build_score_matrix(
+            len(bases), self.match, self.mismatch
+        )
+
+        self.parameters_set = True
+
+    def reset_parameters(self, **kwargs):
+        # unset parameters and remove them as members of object
+        if not(kwargs):
+            for k in self.parameters:
+                self.parameters[k] = 0
+                self.__dict__.pop(k)
+        else:
+            # simply set parameters in kwargs and leave others alone
+            for k in kwargs:
+                if k in self.parameters:
+                    self.__dict__[k] = kwargs[k]
+
+    def align_sequence_pair(self, query, target):
+        if not(self.parameters_set):
+            print("Please set parameters before trying to align sequences")
+            return None
+
+        query = seq_to_int_array(query)
+        target = seq_to_int_array(target)
+        # assuming we don't know max SW score size -> using 2
+        query_profile = self.ssw_init(
+            query, ctypes.c_int32(len(query)), self.scoring, len(bases), 2
+        )
+        mask_length = max(15, len(query) // 2)
+
+        result = self.ssw_align(
+            query_profile, target, ctypes.c_int32(len(target)), self.gap_open,
+            self.gap_extend, self.nflag, 0, 0, ctypes.c_int32(mask_length)
+        )
+
+        results_dict = {}
+        for k, ty in result.contents._fields_:
+            results_dict[k] = result.contents.__getattribute__(k)
+
+        return results_dict
