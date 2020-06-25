@@ -71,8 +71,9 @@ def create_seqlogo_dataframe(sequences):
         warnings.filterwarnings('ignore', r'divide by zero encountered in log2')
         log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
-    correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
-    row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
+    # correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
+    # row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
+    row_scale = numpy.log2(5) - (- (freqs * log_freqs)).sum(axis=1)
 
     return freqs.multiply(row_scale, axis=0)
 
