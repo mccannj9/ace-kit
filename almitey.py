@@ -8,6 +8,7 @@ import argparse
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
+from kit.html import build_html_output
 
 parser = argparse.ArgumentParser()
 
@@ -94,7 +95,6 @@ if two:
 
 else:
     print("Method for two boundaries in different contigs not ready yet", file=log)
-    # sys.exit(0)
     orient_boundaries = False
 
 boundaries = []
@@ -153,3 +153,8 @@ with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
 perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
 print(f"Oriented Pairs: {len(oriented_pairs)}", file=log)
 print(f"Total Paired with 1 Boundary: {len(paired_boundary_reads)}", file=log)
+
+with open(f"{finder.outdir}/almitey.html", 'w') as html:
+    clname = boundaries[0].contig.name.split("Contig")[0]
+    html_text = build_html_output(clname, boundaries)
+    print(html_text, file=html)

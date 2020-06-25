@@ -39,7 +39,8 @@ class SwitchpointFinder:
         ctg = self.current_ctg
         contig_plot = ctg.generate_figure()
         for c, d in zip(numpy.flatnonzero(cands), slopes[cands]):
-            boundary = Boundary(ctg, c, numpy.sign(d), abs(d))
+
+            boundary = Boundary(ctg, ctg.name, c, ctg.depth[c], numpy.sign(d), abs(d))
             boundary.set_boundary_sequence()
             ctg.boundaries.append(boundary)
             print(boundary.boundary_seq_as_fasta(), file=self.fasta)

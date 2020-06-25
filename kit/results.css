@@ -1,0 +1,46 @@
+#table {
+    width: 100%;
+    display: table;
+    border-collapse: collapse
+}
+
+#table-header {
+    display: table-header-group;
+    font-weight: bold;
+    font-size: 25px;
+}
+
+#table-body {
+    display: table-row-group;
+}
+
+.table-header-cell {
+    display: table-cell;
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid black;
+}
+
+.table-body-row {
+    display: table-row;
+    border-bottom: 1px solid grey;
+}
+
+.table-body-cell{
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table-logo-cell{
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.table-seq-cell {
+    display: table-cell;
+    font-family: monospace;
+    text-align: center;
+    vertical-align: middle;
+}
