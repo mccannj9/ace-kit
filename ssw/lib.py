@@ -171,7 +171,13 @@ class CSmithWaterman:
         )
         mask_length = max(15, len(query) // 2)
 
-        return self.ssw_align(
+        result = self.ssw_align(
             query_profile, target, ctypes.c_int32(len(target)), self.gap_open,
             self.gap_extend, self.nflag, 0, 0, ctypes.c_int32(mask_length)
         )
+
+        results_dict = {}
+        for k, ty in result.contents._fields_:
+            results_dict[k] = result.contents.__getattribute__(k)
+
+        return results_dict
