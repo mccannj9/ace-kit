@@ -9,5 +9,5 @@ echo $clustering_dir
 for d in ${clustering_dir}/dir_CL*
 do
     echo "Working on cluster: ${d}"
-    echo "python almitey.py -i ${d} -o ${d}/almitey"
+    python almitey.py -i ${d} -o ${d}/almitey
 done
