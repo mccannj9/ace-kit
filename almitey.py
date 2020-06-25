@@ -36,7 +36,18 @@ parser.add_argument(
     '-l', '--log-file', required=False, default=None
 )
 
+parser.add_argument(
+    '-s', '--read-suffices', required=False, default="fr", type=str
+)
+
 args = parser.parse_args()
+
+try:
+    acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
+
+except IndexError:
+    print("No ace file found", file=sys.stderr)
+    sys.exit(0)
 
 try:
     os.mkdir(args.output_dir)
@@ -50,13 +61,14 @@ if args.log_file:
 else:
     log = sys.stderr
 
+suffix_1 = args.read_suffices[0]
+suffix_2 = args.read_suffices[-1]
+
 keyword_args = {
     'window_size': args.window_size,
     'min_depth': args.min_depth,
     'min_read_prop': args.min_read_prop
 }
-
-acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
 
 finder = SwitchpointFinder(acefile, args.output_dir, **keyword_args)
 contigs, all_reads = finder.fit()
@@ -139,7 +151,9 @@ if orient_boundaries:
 # paired reads analysis
 
 boundary_reads = find_all_boundary_reads(boundaries)
-paired_boundary_reads = pair_boundary_reads(boundary_reads, all_reads)
+paired_boundary_reads = pair_boundary_reads(
+    boundary_reads, all_reads, suffix_1=suffix_1, suffix_2=suffix_2
+)
 oriented_pairs = pairs_with_correct_orient(paired_boundary_reads)
 
 with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
@@ -150,7 +164,12 @@ with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
         print(lout, file=fasta)
         print(rout, file=fasta)
 
-perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
+try:
+    perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
+
+except ZeroDivisionError:
+    print("No boundary pairs found.")
+
 print(f"Oriented Pairs: {len(oriented_pairs)}", file=log)
 print(f"Total Paired with 1 Boundary: {len(paired_boundary_reads)}", file=log)
 
