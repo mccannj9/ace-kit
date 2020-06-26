@@ -10,6 +10,52 @@ from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
 from kit.html import build_html_output
 
+
+class Almitey(object):
+    def __init__(
+        self, input_dir, output_dir, window_size=7, min_depth=10,
+        min_read_prop=0.01, logfile=None, suffices="fr"
+    ):
+
+        self.input_dir = input_dir
+        try:
+            self.ace_filename = glob.glob(f"{args.input_dir}/*.ace")[0]
+
+        except IndexError:
+            print(f"No ace file found in {self.input_dir}", file=sys.stderr)
+            sys.exit(0)
+
+        self.output_dir = output_dir
+        self.window_size = window_size
+        self.min_depth = min_depth
+        self.log_filename = logfile
+        self.suffices = suffices
+
+    def run(self, cluster):
+        try:
+            os.mkdir(self.output_dir)
+
+        except FileExistsError:
+            print(f"{self.output_dir} exists already. Continuing...")
+
+        with open(self.log_filename, 'w') as log:
+            finder = SwitchpointFinder(
+                self.ace_filename, outdir=self.output_dir, window_size=self.window_size,
+                min_depth=self.min_depth, min_read_prop=self.min_read_prop
+            )
+            contigs, all_reads = finder.fit()
+
+    def run_on_all_clusters(self):
+        clusters = glob.glob(
+            f"{self.input_dir}/seqclust/clustering/clusters/dir_CL*"
+        )
+
+        for cluster in clusters:
+            self.output_dir = f"{cluster}/almitey"
+            self.log_filename = f"{self.output_dir}/almitey_log.txt"
+            self.run(cluster)
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
