@@ -28,6 +28,7 @@ class Almitey(object):
         self.output_dir = output_dir
         self.window_size = window_size
         self.min_depth = min_depth
+        self.min_read_prop = min_read_prop
         self.log_filename = logfile
         self.suffices = suffices
 
@@ -44,6 +45,29 @@ class Almitey(object):
                 min_depth=self.min_depth, min_read_prop=self.min_read_prop
             )
             contigs, all_reads = finder.fit()
+            sorted_contigs = sorted(
+                contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
+            )
+            # remove any contigs with no inferred boundaries
+            sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
+
+            nboundaries = sum([c.nboundaries for c in sorted_contigs])
+            print(f"Total boundaries found: {nboundaries}", file=log)
+
+            if not(nboundaries):
+                return
+
+            else:
+                boundaries = []
+                for c in sorted_contigs:
+                    boundaries += c.boundaries
+                boundaries.sort(key=lambda x: x.rate, reverse=True)
+
+            with open(f"{self.output_dir}/almitey.html", 'w') as html:
+                clname = boundaries[0].contig.name.split("Contig")[0]
+                html_text = build_html_output(clname, boundaries)
+                print(html_text, file=html)
+
 
     def run_on_all_clusters(self):
         clusters = glob.glob(
