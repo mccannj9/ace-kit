@@ -1,7 +1,7 @@
 
 from string import Template
 
-table_row = """
+minor_table_row = """
                 <div class='table-body-row'>
                     <div class="table-body-cell">
                         $contig_name
@@ -58,6 +58,27 @@ minor_html = """
 
 """
 
+major_table_row = """
+                <div class='table-body-row'>
+                    <div class="table-body-cell">
+                        <a href="$minor_path">$cluster</a>
+                    </div>
+                    <div class="table-body-cell">
+                        $num_contigs
+                    </div>
+                    <div class="table-body-cell">
+                        $num_boundaries
+                    </div>
+                    <div class="table-body-cell">
+                        $avg_contig_len
+                    </div>
+                    <div class="table-body-cell">
+                        $avg_boundary_score
+                    </div>
+                </div>
+
+"""
+
 major_html = """
 <html>
     <head>
@@ -75,9 +96,7 @@ major_html = """
                 <div class="table-header-cell">Number of Contigs</div>
                 <div class="table-header-cell">Number of Boundaries</div>
                 <div class="table-header-cell">Average Contig Length</div>
-                <div class="table-header-cell">Contig Side</div>
-                <div class="table-header-cell">Logo</div>
-                <div class="table-header-cell">Sequence</div>
+                <div class="table-header-cell">Average Boundary Score</div>
             </div>
             <div id="table-body">
                 $table_rows
@@ -88,9 +107,10 @@ major_html = """
 
 """
 
-table_row_template = Template(table_row)
+minor_row_template = Template(minor_table_row)
 minor_html_template = Template(minor_html)
-
+major_row_template = Template(major_table_row)
+major_html_template = Template(major_html)
 
 def build_html_output(cluster_name: str, boundaries: list) -> str:
     table_rows = []
