@@ -32,6 +32,7 @@ minor_html = """
 <html>
     <head>
         <title>Almitey Report $cluster_name</title>
+        <link rel="stylesheet" type="text/css" href="results.css">
     </head>
     <style>
         #table{width:100%;display:table;border-collapse:collapse}#table-header{display:table-header-group;font-weight:700;font-size:25px}#table-body{display:table-row-group}.table-header-cell{display:table-cell;padding:10px;text-align:center;border-bottom:1px solid #000}.table-body-row{display:table-row;border-bottom:1px solid grey}.table-body-cell{display:table-cell;text-align:center;vertical-align:middle}.table-logo-cell{display:table-cell;vertical-align:middle;text-align:center}.table-seq-cell{display:table-cell;font-family:monospace;text-align:center;vertical-align:middle}
@@ -83,6 +84,7 @@ major_html = """
 <html>
     <head>
         <title>Complete by Cluster Almitey Report</title>
+        <link rel="stylesheet" type="text/css" href="results.css">
     </head>
     <style>
         #table{width:100%;display:table;border-collapse:collapse}#table-header{display:table-header-group;font-weight:700;font-size:25px}#table-body{display:table-row-group}.table-header-cell{display:table-cell;padding:10px;text-align:center;border-bottom:1px solid #000}.table-body-row{display:table-row;border-bottom:1px solid grey}.table-body-cell{display:table-cell;text-align:center;vertical-align:middle}.table-logo-cell{display:table-cell;vertical-align:middle;text-align:center}.table-seq-cell{display:table-cell;font-family:monospace;text-align:center;vertical-align:middle}

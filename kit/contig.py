@@ -254,6 +254,7 @@ class Contig(object):
         fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
         if filename:
             fig.savefig(filename, **kwargs)
+            pyplot.close(fig)
         return fig
 
     def add_candidate_switchpoint_to_fig(self, fig, candidate):
