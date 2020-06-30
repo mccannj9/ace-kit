@@ -8,7 +8,7 @@ import argparse
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
-from kit.html import build_html_output
+from kit.html import build_html_output, major_row_template, major_html_template
 
 
 class Almitey(object):
@@ -33,6 +33,19 @@ class Almitey(object):
         self.suffices = suffices
 
     def run(self, cluster):
+
+        cluster_output_dict = {
+            'cluster': '',
+            'num_contigs': 0,
+            'num_boundaries': 0,
+            'avg_contig_len': 0,
+            'avg_boundary_score': 0,
+            'minor_path': ""
+        }
+
+        clname = self.output_dir.split("/")[-2].split("_")[-1]
+        cluster_output_dict['cluster'] = clname
+
         try:
             os.mkdir(self.output_dir)
 
@@ -45,6 +58,7 @@ class Almitey(object):
                 min_depth=self.min_depth, min_read_prop=self.min_read_prop
             )
             contigs, all_reads = finder.fit()
+            cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
                 contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
             )
@@ -53,20 +67,21 @@ class Almitey(object):
 
             nboundaries = sum([c.nboundaries for c in sorted_contigs])
             print(f"Total boundaries found: {nboundaries}", file=log)
+            cluster_output_dict['num_boundaries'] = nboundaries
 
-            if not(nboundaries):
-                return
-
-            else:
+            if nboundaries:
                 boundaries = []
                 for c in sorted_contigs:
                     boundaries += c.boundaries
                 boundaries.sort(key=lambda x: x.rate, reverse=True)
 
-            with open(f"{self.output_dir}/almitey.html", 'w') as html:
-                clname = boundaries[0].contig.name.split("Contig")[0]
-                html_text = build_html_output(clname, boundaries)
-                print(html_text, file=html)
+                with open(f"{self.output_dir}/almitey.html", 'w') as html:
+                    clname = boundaries[0].contig.name.split("Contig")[0]
+                    html_text = build_html_output(clname, boundaries)
+                    print(html_text, file=html)
+                    cluster_output_dict['minor_path'] = html.fname
+
+        return major_row_template.safe_substitute(cluster_output_dict)
 
 
     def run_on_all_clusters(self):
@@ -74,11 +89,20 @@ class Almitey(object):
             f"{self.input_dir}/seqclust/clustering/clusters/dir_CL*"
         )
 
+        self.major_html_fn = f"{self.input_dir}/seqclust/almitey.html"
+        table_rows = []
+
         for cluster in clusters:
             self.output_dir = f"{cluster}/almitey"
             self.log_filename = f"{self.output_dir}/almitey_log.txt"
-            self.run(cluster)
+            html = self.run(cluster)
+            table_rows.append(html)
 
+        table_rows = "\n".join(table_rows)
+
+        with open(self.major_html_fn, 'w') as major:
+            html = major_html_template.safe_substitute({'table_rows': table_rows})
+            print(html, file=major)
 
 parser = argparse.ArgumentParser()
 

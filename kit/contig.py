@@ -12,7 +12,7 @@ from matplotlib import pyplot
 from logomaker import Logo
 
 from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
-from kit.html import table_row_template
+from kit.html import minor_row_template
 
 
 pyplot.style.use('bmh')
@@ -301,14 +301,6 @@ class Boundary:
     def name(self):
         return f"{self.contig.name}_{self.side_as_l_or_r()}"
 
-    # @property
-    # def contig_name(self):
-    #     return self.contig.name
-
-    # @property
-    # def depth(self):
-    #     return self.contig.depth[self.pos]
-
     def set_boundary_sequence(self, l=30):
         pos = self.pos - self.contig.shift
         if self.side == 1:
@@ -371,4 +363,4 @@ class Boundary:
         d['side'] = "left" if d['side'] == "l" else "right"
         d['pos'] = self.pos - self.contig.shift
         d['rate'] = round(d['rate'], 1)
-        return table_row_template.safe_substitute(d)
+        return minor_row_template.safe_substitute(d)
