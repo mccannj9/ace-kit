@@ -28,11 +28,10 @@ table_row = """
 
 """
 
-html = """
+minor_html = """
 <html>
     <head>
         <title>Almitey Report $cluster_name</title>
-        <link rel="stylesheet" type="text/css" href="results.css">
     </head>
     <style>
         #table{width:100%;display:table;border-collapse:collapse}#table-header{display:table-header-group;font-weight:700;font-size:25px}#table-body{display:table-row-group}.table-header-cell{display:table-cell;padding:10px;text-align:center;border-bottom:1px solid #000}.table-body-row{display:table-row;border-bottom:1px solid grey}.table-body-cell{display:table-cell;text-align:center;vertical-align:middle}.table-logo-cell{display:table-cell;vertical-align:middle;text-align:center}.table-seq-cell{display:table-cell;font-family:monospace;text-align:center;vertical-align:middle}
@@ -59,8 +58,38 @@ html = """
 
 """
 
+major_html = """
+<html>
+    <head>
+        <title>Complete by Cluster Almitey Report</title>
+    </head>
+    <style>
+        #table{width:100%;display:table;border-collapse:collapse}#table-header{display:table-header-group;font-weight:700;font-size:25px}#table-body{display:table-row-group}.table-header-cell{display:table-cell;padding:10px;text-align:center;border-bottom:1px solid #000}.table-body-row{display:table-row;border-bottom:1px solid grey}.table-body-cell{display:table-cell;text-align:center;vertical-align:middle}.table-logo-cell{display:table-cell;vertical-align:middle;text-align:center}.table-seq-cell{display:table-cell;font-family:monospace;text-align:center;vertical-align:middle}
+    </style>
+    <body>
+        <h1 class="cluster-result-header">Complete by Cluster Almitey Report</h1>
+        </table>
+        <div id="table">
+            <div id="table-header">
+                <div class="table-header-cell">Cluster</div>
+                <div class="table-header-cell">Number of Contigs</div>
+                <div class="table-header-cell">Number of Boundaries</div>
+                <div class="table-header-cell">Average Contig Length</div>
+                <div class="table-header-cell">Contig Side</div>
+                <div class="table-header-cell">Logo</div>
+                <div class="table-header-cell">Sequence</div>
+            </div>
+            <div id="table-body">
+                $table_rows
+            </div>
+        </div>
+    </body>
+</html>
+
+"""
+
 table_row_template = Template(table_row)
-html_template = Template(html)
+minor_html_template = Template(minor_html)
 
 
 def build_html_output(cluster_name: str, boundaries: list) -> str:
@@ -68,7 +97,7 @@ def build_html_output(cluster_name: str, boundaries: list) -> str:
     for b in boundaries:
         table_rows.append(b.table_row_template().strip('\n'))
     table_rows = "\n".join(table_rows)
-    html = html_template.safe_substitute({
+    html = minor_html_template.safe_substitute({
         'cluster_name': cluster_name,
         'table_rows': table_rows
     })

@@ -79,3 +79,9 @@ class SwitchpointFinder:
         candidates = sc * dmask * derivatives_mask
 
         return candidates.astype(bool), derivatives
+
+    def kmeans_orient_boundaries(self, boundaries):
+        sorted_boundaries = sorted(boundaries, key=lambda x: x.rate)
+
+        top = sorted_boundaries[0]
+        return top
