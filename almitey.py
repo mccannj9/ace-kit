@@ -8,172 +8,110 @@ import argparse
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
-from kit.html import build_html_output
 
-parser = argparse.ArgumentParser()
+from kit.html import build_html_output, major_html_template
+from kit.html import major_row_template, major_row_none_template
 
-parser.add_argument(
-    '-i', '--input-dir', required=True
-)
+class Almitey(object):
+    def __init__(
+        self, input_dir, output_dir, window_size=7, min_depth=10,
+        min_read_prop=0.01, logfile=None, suffices="fr"
+    ):
 
-parser.add_argument(
-    '-o', '--output-dir', required=False, default="./", type=str
-)
+        self.input_dir = input_dir
+        self.output_dir = output_dir
+        self.window_size = window_size
+        self.min_depth = min_depth
+        self.min_read_prop = min_read_prop
+        self.log_filename = logfile
+        self.suffices = suffices
+        self.relative_loc = "seqclust/clustering/clusters"
 
-parser.add_argument(
-    '-w', '--window-size', required=False, default=7, type=int
-)
+    def run(self, cluster, all=False):
 
-parser.add_argument(
-    '-d', '--min-depth', required=False, default=10, type=int
-)
+        cluster_output_dict = {
+            'cluster': '',
+            'num_contigs': 0,
+            'num_boundaries': 0,
+            'avg_contig_len': 0,
+            'avg_boundary_score': 0,
+            'minor_path': ""
+        }
 
-parser.add_argument(
-    '-r', '--min-read-prop', required=False, default=0.01, type=float
-)
+        clname = os.path.basename(cluster).split("_")[-1]
+        cluster_output_dict['cluster'] = clname
 
-parser.add_argument(
-    '-l', '--log-file', required=False, default=None
-)
+        try:
+            self.ace_filename = glob.glob(f"{cluster}/*.ace")[0]
 
-parser.add_argument(
-    '-s', '--read-suffices', required=False, default="fr", type=str
-)
+        except IndexError:
+            print(f"No ace file found in {self.input_dir}", file=sys.stderr)
+            return major_row_none_template.safe_substitute(cluster_output_dict)
 
-args = parser.parse_args()
+        try:
+            os.mkdir(self.output_dir)
 
-try:
-    acefile = glob.glob(f"{args.input_dir}/*.ace")[0]
+        except FileExistsError:
+            print(f"{self.output_dir} exists already. Continuing...")
 
-except IndexError:
-    print("No ace file found", file=sys.stderr)
-    sys.exit(0)
+        with open(self.log_filename, 'w') as log:
+            finder = SwitchpointFinder(
+                self.ace_filename, outdir=self.output_dir, window_size=self.window_size,
+                min_depth=self.min_depth, min_read_prop=self.min_read_prop
+            )
+            contigs, all_reads = finder.fit()
+            cluster_output_dict['num_contigs'] = len(contigs)
+            sorted_contigs = sorted(
+                contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
+            )
+            # remove any contigs with no inferred boundaries
+            sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
 
-try:
-    os.mkdir(args.output_dir)
+            nboundaries = sum([c.nboundaries for c in sorted_contigs])
+            print(f"Total boundaries found: {nboundaries}", file=log)
+            cluster_output_dict['num_boundaries'] = nboundaries
 
-except FileExistsError:
-    pass
+            if nboundaries:
+                boundaries = []
+                for c in sorted_contigs:
+                    boundaries += c.boundaries
+                boundaries.sort(key=lambda x: x.rate, reverse=True)
 
-if args.log_file:
-    log = open(f"{args.output_dir}/{args.log_file}", 'w')
+                if all:
+                    # setting up paths
+                    for b in boundaries:
+                        b.logo_path = os.path.basename(b.logo_path)
+                    dirname = os.path.basename(cluster)
+                    cluster_output_dict['minor_path'] = f"{self.relative_loc}/{dirname}/almitey/almitey.html"
+                
+                with open(f"{self.output_dir}/almitey.html", 'w') as html:
+                    clname = boundaries[0].contig.name.split("Contig")[0]
+                    html_text = build_html_output(clname, boundaries)
+                    print(html_text, file=html)
 
-else:
-    log = sys.stderr
+        return major_row_template.safe_substitute(cluster_output_dict)
 
-suffix_1 = args.read_suffices[0]
-suffix_2 = args.read_suffices[-1]
 
-keyword_args = {
-    'window_size': args.window_size,
-    'min_depth': args.min_depth,
-    'min_read_prop': args.min_read_prop
-}
-
-finder = SwitchpointFinder(acefile, args.output_dir, **keyword_args)
-contigs, all_reads = finder.fit()
-
-sorted_contigs = sorted(
-    contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
-)
-# remove any contigs with no inferred boundaries
-sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
-
-nboundaries_found = sum([c.nboundaries for c in sorted_contigs])
-
-if not(nboundaries_found):
-    print("Not enough boundaries found in contigs")
-    # run was still a success, just no boundaries ;)
-    print("No boundaries found", file=log)
-    sys.exit(0)
-
-# at_least_two = True if nboundaries_found > 0 else False
-# check if two boundaries were found in one contig
-two = True if sorted_contigs[0].nboundaries == 2 else False
-
-# building database from top contig with two boundaries
-if two:
-    reference = sorted_contigs[0]
-    outname = f"{args.output_dir}/top_boundaries_db.fas"
-    print(f"Two boundaries found in {reference.name}, using as database > {outname}")
-
-    with open(outname, 'w') as fasta:
-        for b in reference.boundaries:
-            b.orient = b.side
-            print(b.boundary_seq_as_fasta(), file=fasta)
-
-    ref_l, ref_r = reference.boundaries
-    orient_boundaries = True
-
-else:
-    print("Method for two boundaries in different contigs not ready yet", file=log)
-    orient_boundaries = False
-
-boundaries = []
-for c in sorted_contigs:
-    boundaries += c.boundaries
-
-if orient_boundaries:
-    query = f"{finder.outdir}/boundaries_from_contigs.fas"
-    subject = outname
-    orient_out = f"{finder.outdir}/orientation_blast.txt"
-    quick_blastn(query, subject, orient_out)
-
-    blast_results = parse_blast_output(orient_out)
-    for res in blast_results:
-        set_result_orientation(res)
-
-    # don't look at first two boundaries, they are the reference
-    boundary_blasts = {}
-    for b in boundaries[2:]:
-        boundary_blasts[b.name] = sorted(
-            [x for x in blast_results if b.name == x.query], key=lambda b: b.subject
+    def run_on_all_clusters(self):
+        clusters = glob.glob(
+            f"{self.input_dir}/{self.relative_loc}/dir_CL*"
         )
-        orients = [x.orientation for x in boundary_blasts[b.name]]
-        if orients == [ref_l.orient, ref_r.orient]:
-            print('left side')
-            b.orient = ref_l.orient
-        else:
-            print('right side')
-            b.orient = ref_r.orient
+        clusters.sort(
+            key=lambda c: int(os.path.basename(c).split("_")[-1][2:])
+        )
 
-    with open(f"{finder.outdir}/boundaries_left.fas", 'w') as fasta:
-        for b in boundaries:
-            if b.orient == 1.0:
-                print(b.boundary_seq_as_fasta(), file=fasta)
+        self.major_html_fn = f"{self.input_dir}/almitey.html"
+        table_rows = []
 
-    with open(f"{finder.outdir}/boundaries_right.fas", 'w') as fasta:
-        for b in boundaries:
-            if b.orient == -1.0:
-                print(b.boundary_seq_as_fasta(), file=fasta)
+        for cluster in clusters:
+            print(cluster)
+            self.output_dir = f"{cluster}/almitey"
+            self.log_filename = f"{self.output_dir}/almitey_log.txt"
+            html = self.run(cluster, all=True)
+            table_rows.append(html)
 
+        table_rows = "\n".join(table_rows)
 
-# paired reads analysis
-
-boundary_reads = find_all_boundary_reads(boundaries)
-paired_boundary_reads = pair_boundary_reads(
-    boundary_reads, all_reads, suffix_1=suffix_1, suffix_2=suffix_2
-)
-oriented_pairs = pairs_with_correct_orient(paired_boundary_reads)
-
-with open(f"{finder.outdir}/potential_boundary_pairs.fas", 'w') as fasta:
-    for k in oriented_pairs:
-        l, r = oriented_pairs[k]
-        lout = f'>{l.name} {l.ctg} {l.comp} {int(l.side)}\n{l.seq.replace("*", "")}'
-        rout = f'>{r.name} {r.ctg} {r.comp} {int(r.side)}\n{r.seq.replace("*", "")}'
-        print(lout, file=fasta)
-        print(rout, file=fasta)
-
-try:
-    perc_oriented = len(oriented_pairs) / len(paired_boundary_reads)
-
-except ZeroDivisionError:
-    print("No boundary pairs found.")
-
-print(f"Oriented Pairs: {len(oriented_pairs)}", file=log)
-print(f"Total Paired with 1 Boundary: {len(paired_boundary_reads)}", file=log)
-
-with open(f"{finder.outdir}/almitey.html", 'w') as html:
-    clname = boundaries[0].contig.name.split("Contig")[0]
-    html_text = build_html_output(clname, boundaries)
-    print(html_text, file=html)
+        with open(self.major_html_fn, 'w') as major:
+            html = major_html_template.safe_substitute({'table_rows': table_rows})
+            print(html, file=major)
