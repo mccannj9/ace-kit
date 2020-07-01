@@ -77,6 +77,26 @@ major_table_row = """
                 </div>
 """
 
+major_table_row_none = """
+                <div class='table-body-row'>
+                    <div class="table-body-cell">
+                        $cluster
+                    </div>
+                    <div class="table-body-cell">
+                        $num_contigs
+                    </div>
+                    <div class="table-body-cell">
+                        $num_boundaries
+                    </div>
+                    <div class="table-body-cell">
+                        $avg_contig_len
+                    </div>
+                    <div class="table-body-cell">
+                        $avg_boundary_score
+                    </div>
+                </div>
+"""
+
 major_html = """
 <html>
     <head>
@@ -108,6 +128,7 @@ major_html = """
 minor_row_template = Template(minor_table_row)
 minor_html_template = Template(minor_html)
 major_row_template = Template(major_table_row)
+major_row_none_template = Template(major_table_row_none)
 major_html_template = Template(major_html)
 
 def build_html_output(cluster_name: str, boundaries: list) -> str:
