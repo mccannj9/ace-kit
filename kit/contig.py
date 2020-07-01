@@ -1,4 +1,5 @@
 
+import os
 import re
 
 from dataclasses import dataclass
@@ -322,6 +323,7 @@ class Boundary:
         if save:
             fig.savefig(save)
             self.logo_path = save
+            pyplot.close(fig)
 
     def side_as_l_or_r(self):
         return "l" if self.side == 1 else "r"

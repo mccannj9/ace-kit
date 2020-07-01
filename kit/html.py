@@ -25,7 +25,6 @@ minor_table_row = """
                         $seq
                     </div>
                 </div>
-
 """
 
 minor_html = """
@@ -56,7 +55,6 @@ minor_html = """
         </div>
     </body>
 </html>
-
 """
 
 major_table_row = """
@@ -77,7 +75,6 @@ major_table_row = """
                         $avg_boundary_score
                     </div>
                 </div>
-
 """
 
 major_html = """
@@ -106,7 +103,6 @@ major_html = """
         </div>
     </body>
 </html>
-
 """
 
 minor_row_template = Template(minor_table_row)

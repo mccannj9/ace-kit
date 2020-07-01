@@ -24,6 +24,7 @@ class Almitey(object):
         self.min_read_prop = min_read_prop
         self.log_filename = logfile
         self.suffices = suffices
+        self.relative_loc = "seqclust/clustering/clusters"
 
     def run(self, cluster):
 
@@ -43,7 +44,8 @@ class Almitey(object):
             print(f"No ace file found in {self.input_dir}", file=sys.stderr)
             return major_row_template.safe_substitute(cluster_output_dict)
 
-        clname = self.output_dir.split("/")[-2].split("_")[-1]
+        # clname = self.output_dir.split("/")[-2].split("_")[-1]
+        clname = os.path.basename(self.output_dir).split("_")[-1]
         cluster_output_dict['cluster'] = clname
 
         try:
@@ -79,14 +81,16 @@ class Almitey(object):
                     clname = boundaries[0].contig.name.split("Contig")[0]
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
-                    cluster_output_dict['minor_path'] = html.name
+
+                minor_path = f"{self.relative_loc}/{os.path.basename(html.name)}"
+                cluster_output_dict['minor_path'] = minor_path
 
         return major_row_template.safe_substitute(cluster_output_dict)
 
 
     def run_on_all_clusters(self):
         clusters = glob.glob(
-            f"{self.input_dir}/seqclust/clustering/clusters/dir_CL*"
+            f"{self.input_dir}/{self.relative_loc}/dir_CL*"
         )
 
         self.major_html_fn = f"{self.input_dir}/almitey.html"
