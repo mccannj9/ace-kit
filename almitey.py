@@ -26,14 +26,15 @@ class Almitey(object):
         self.log_filename = logfile
         self.suffices = suffices
         self.relative_loc = "seqclust/clustering/clusters"
+        self.all = False
 
-    def run(self, cluster, all=False):
+    def run(self, cluster):
 
         cluster_output_dict = {
             'cluster': '',
             'num_contigs': 0,
             'num_boundaries': 0,
-            'avg_contig_len': 0,
+            'avg_contig_length': 0,
             'avg_boundary_score': 0,
             'minor_path': ""
         }
@@ -66,6 +67,10 @@ class Almitey(object):
             )
             # remove any contigs with no inferred boundaries
             sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
+            if len(sorted_contigs):
+                cluster_output_dict['avg_contig_length'] = round(sum([
+                    x.length for x in sorted_contigs
+                ]) / len(sorted_contigs))
 
             nboundaries = sum([c.nboundaries for c in sorted_contigs])
             print(f"Total boundaries found: {nboundaries}", file=log)
@@ -76,23 +81,30 @@ class Almitey(object):
                 for c in sorted_contigs:
                     boundaries += c.boundaries
                 boundaries.sort(key=lambda x: x.rate, reverse=True)
+                cluster_output_dict['avg_boundary_score'] = round(sum([
+                    x.rate for x in boundaries
+                ]) / len(boundaries))
 
-                if all:
+                if self.all:
                     # setting up paths
                     for b in boundaries:
                         b.logo_path = os.path.basename(b.logo_path)
                     dirname = os.path.basename(cluster)
                     cluster_output_dict['minor_path'] = f"{self.relative_loc}/{dirname}/almitey/almitey.html"
-                
+
                 with open(f"{self.output_dir}/almitey.html", 'w') as html:
                     clname = boundaries[0].contig.name.split("Contig")[0]
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
 
+            else:
+                return major_row_none_template.safe_substitute(cluster_output_dict)
+
         return major_row_template.safe_substitute(cluster_output_dict)
 
 
     def run_on_all_clusters(self):
+        self.all = True
         clusters = glob.glob(
             f"{self.input_dir}/{self.relative_loc}/dir_CL*"
         )
@@ -100,14 +112,14 @@ class Almitey(object):
             key=lambda c: int(os.path.basename(c).split("_")[-1][2:])
         )
 
-        self.major_html_fn = f"{self.input_dir}/almitey.html"
+        self.major_html_fn = f"{self.input_dir}/almitey_report.html"
         table_rows = []
 
         for cluster in clusters:
             print(cluster)
             self.output_dir = f"{cluster}/almitey"
             self.log_filename = f"{self.output_dir}/almitey_log.txt"
-            html = self.run(cluster, all=True)
+            html = self.run(cluster)
             table_rows.append(html)
 
         table_rows = "\n".join(table_rows)
