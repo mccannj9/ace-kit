@@ -34,7 +34,7 @@ class Almitey(object):
             'cluster': '',
             'num_contigs': 0,
             'num_boundaries': 0,
-            'avg_contig_len': 0,
+            'avg_contig_length': 0,
             'avg_boundary_score': 0,
             'minor_path': ""
         }
@@ -67,6 +67,10 @@ class Almitey(object):
             )
             # remove any contigs with no inferred boundaries
             sorted_contigs[:] = [x for x in sorted_contigs if len(x.boundaries)]
+            if len(sorted_contigs):
+                cluster_output_dict['avg_contig_length'] = round(sum([
+                    x.length for x in sorted_contigs
+                ]) / len(sorted_contigs))
 
             nboundaries = sum([c.nboundaries for c in sorted_contigs])
             print(f"Total boundaries found: {nboundaries}", file=log)
@@ -77,6 +81,9 @@ class Almitey(object):
                 for c in sorted_contigs:
                     boundaries += c.boundaries
                 boundaries.sort(key=lambda x: x.rate, reverse=True)
+                cluster_output_dict['avg_boundary_score'] = round(sum([
+                    x.rate for x in boundaries
+                ]) / len(boundaries))
 
                 if self.all:
                     # setting up paths
