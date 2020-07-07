@@ -69,7 +69,7 @@ major_table_row = """
                         $num_boundaries
                     </div>
                     <div class="table-body-cell">
-                        $avg_contig_len
+                        $avg_contig_length
                     </div>
                     <div class="table-body-cell">
                         $avg_boundary_score
@@ -89,7 +89,7 @@ major_table_row_none = """
                         $num_boundaries
                     </div>
                     <div class="table-body-cell">
-                        $avg_contig_len
+                        $avg_contig_length
                     </div>
                     <div class="table-body-cell">
                         $avg_boundary_score
