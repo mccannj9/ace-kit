@@ -197,3 +197,40 @@ def pairs_with_correct_orient(paired_reads_dict):
         if l.comp != r.comp:
             oriented[x] = (l, r)
     return oriented
+
+
+def overlap(a,b):
+    return max(0, min(a[-1], b[-1]) - max(a[0], b[0]) + 1)
+
+
+def get_reads(contig, p, b, e):
+    reads = []
+    for read in contig.reads:
+        tp = p - contig.shift
+        ov = overlap(
+            [read.start, read.start + read.length - 1], [tp-b, tp+e-1]
+        )
+        if ov:
+            reads.append(read)
+
+    return reads
+
+
+def get_seq_from_reads(contig, p, b, e):
+    reads = []
+    for read in contig.reads:
+        tp = p - contig.shift
+        ov = overlap([read.start, read.start + read.length - 1], [tp-b, tp+e-1])
+        if ov:
+            print(ov, tp-b, tp+e-1, read.start, read.start + read.length - 1, read.length)
+            reads.append(read)
+            if read.start < (tp-b):
+                seq = read.seq[tp-read.start-b:tp-read.start+e]
+            else:
+                diff = read.start - (tp - b)
+                print(diff)
+                diff_pad = diff * "_"
+                seq = f"{diff_pad}{read.seq[:e-diff+b]}"
+            print(seq)
+    
+    return reads
