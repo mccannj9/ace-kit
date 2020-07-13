@@ -3,7 +3,6 @@
 import os
 import glob
 import sys
-import argparse
 
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
@@ -28,6 +27,9 @@ class Almitey(object):
         self.relative_loc = "seqclust/clustering/clusters"
         self.all = False
 
+        if not(logfile):
+            self.log_filename = f"{self.output_dir}/logfile.txt"
+
     def run(self, cluster):
 
         cluster_output_dict = {
@@ -39,15 +41,15 @@ class Almitey(object):
             'minor_path': ""
         }
 
-        clname = os.path.basename(cluster).split("_")[-1]
+        clname = os.path.basename(self.input_dir).split("_")[-1]
         cluster_output_dict['cluster'] = clname
 
         try:
-            self.ace_filename = glob.glob(f"{cluster}/*.ace")[0]
+            self.ace_filename = glob.glob(f"{self.input_dir}/*.ace")[0]
 
         except IndexError:
             print(f"No ace file found in {self.input_dir}", file=sys.stderr)
-            return major_row_none_template.safe_substitute(cluster_output_dict)
+            return cluster_output_dict
 
         try:
             os.mkdir(self.output_dir)
@@ -85,11 +87,11 @@ class Almitey(object):
                     x.rate for x in boundaries
                 ]) / len(boundaries))
 
+                for b in boundaries:
+                    b.logo_path = os.path.basename(b.logo_path)
+                dirname = os.path.basename(self.input_dir)
+
                 if self.all:
-                    # setting up paths
-                    for b in boundaries:
-                        b.logo_path = os.path.basename(b.logo_path)
-                    dirname = os.path.basename(cluster)
                     cluster_output_dict['minor_path'] = f"{self.relative_loc}/{dirname}/almitey/almitey.html"
 
                 with open(f"{self.output_dir}/almitey.html", 'w') as html:
@@ -97,11 +99,7 @@ class Almitey(object):
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
 
-            else:
-                return major_row_none_template.safe_substitute(cluster_output_dict)
-
-        return major_row_template.safe_substitute(cluster_output_dict)
-
+        return cluster_output_dict
 
     def run_on_all_clusters(self):
         self.all = True
@@ -117,10 +115,15 @@ class Almitey(object):
 
         for cluster in clusters:
             print(cluster)
+            self.input_dir = cluster
             self.output_dir = f"{cluster}/almitey"
             self.log_filename = f"{self.output_dir}/almitey_log.txt"
-            html = self.run(cluster)
-            table_rows.append(html)
+            result = self.run(cluster)
+
+            if result['minor_path']:
+                table_rows.append(major_row_template.safe_substitute(result))
+            else:
+                table_rows.append(major_row_none_template.safe_substitute(result))
 
         table_rows = "\n".join(table_rows)
 
