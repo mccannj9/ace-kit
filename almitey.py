@@ -59,8 +59,9 @@ class Almitey(object):
 
         with open(self.log_filename, 'w') as log:
             finder = SwitchpointFinder(
-                self.ace_filename, outdir=self.output_dir, window_size=self.window_size,
-                min_depth=self.min_depth, min_read_prop=self.min_read_prop
+                self.ace_filename, outdir=self.output_dir,
+                window_size=self.window_size, min_depth=self.min_depth,
+                min_read_prop=self.min_read_prop
             )
             contigs, all_reads = finder.fit()
             cluster_output_dict['num_contigs'] = len(contigs)
