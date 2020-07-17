@@ -5,6 +5,9 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.contig import Boundary
+from kit.utils import rc
+
+from ssw.lib import CSmithWaterman
 
 
 class SwitchpointFinder:
@@ -80,8 +83,26 @@ class SwitchpointFinder:
 
         return candidates.astype(bool), derivatives
 
-    def kmeans_orient_boundaries(self, boundaries):
-        sorted_boundaries = sorted(boundaries, key=lambda x: x.rate)
+    def orient_boundaries(self, boundaries, **params):
+        aligner = CSmithWaterman()
+        aligner.set_alignment_params(**params)
+        boundaries.sort(key=lambda x: x.rate, reverse=True)
 
-        top = sorted_boundaries[0]
-        return top
+        top = boundaries[0].seq
+        ids = [b._id for b in boundaries]
+        seqs = [b.seq for b in boundaries]
+        results = {}
+
+        for _id, seq in zip(ids, seqs):
+            res_0 = aligner.align_sequence_pair(seq, top)
+            res_1 = aligner.align_sequence_pair(
+                "".join([rc[x] for x in seq[::-1]]), top
+            )
+
+            if res_0['nScore'] > res_1['nScore']:
+                results[_id] = 1
+            elif res_0['nScore'] < res_1['nScore']:
+                results[_id] = 0
+            else:
+                # ambiguous result, should not happen
+                results[_id] = None

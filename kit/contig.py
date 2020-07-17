@@ -334,6 +334,10 @@ class Boundary:
     def boundary_seq_as_fasta(self):
         return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
 
+    @property
+    def _id(self):
+        return f">{self.contig.name}_{self.side_as_l_or_r()}"
+
     def get_reads_from_boundary(self, buffer=0):
         reads = []
         for r in self.contig.reads:

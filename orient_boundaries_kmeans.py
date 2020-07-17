@@ -2,16 +2,12 @@
 
 import sys
 
-import numpy
-
-from sklearn.cluster import KMeans
-
 from ssw.lib import CSmithWaterman
 from kit.utils import rc
 
 aligner = CSmithWaterman()
+# use default alignment params
 aligner.set_alignment_params()
-clusterer = KMeans(n_clusters=2)
 
 with open(f"{sys.argv[1]}/boundaries_from_contigs.fas") as fasta:
     lines = [line.strip() for line in fasta]
@@ -21,14 +17,21 @@ with open(f"{sys.argv[1]}/boundaries_from_contigs.fas") as fasta:
 # align all against this sequence (perhaps also the revcomp)
 # use resulting 2D alignment scores for kmeans clustering
 
+top_id = lines[0]
 top = lines[1]
-data = numpy.zeros(shape=(len(lines)//2, 2), dtype=numpy.float)
 
+results = {}
 
-for i, seq in enumerate(lines[1::2]):
-    data[i, 0] = aligner.align_sequence_pair(seq, top)['nScore']
-    data[i, 1] = aligner.align_sequence_pair(
+for i, (_id, seq) in enumerate(zip(lines[::2], lines[1::2])):
+    res_0 = aligner.align_sequence_pair(seq, top)
+    res_1 = aligner.align_sequence_pair(
         "".join([rc[x] for x in seq[::-1]]), top
-    )['nScore']
+    )
 
-preds = clusterer.fit_predict(data)
+    if res_0['nScore'] > res_1['nScore']:
+        results[_id] = 1
+    elif res_0['nScore'] < res_1['nScore']:
+        results[_id] = 0
+    else:
+        # ambiguous result, should not happen
+        results[_id] = None

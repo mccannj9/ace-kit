@@ -148,7 +148,7 @@ class CSmithWaterman:
                 if k in self.parameters:
                     self.__dict__[k] = kwargs[k]
 
-    def align_sequence_pair(self, query, target):
+    def align_sequence_pair(self, query, target, destroy=True):
         if not(self.parameters_set):
             print("Please set parameters before trying to align sequences")
             return None
@@ -180,7 +180,8 @@ class CSmithWaterman:
 
         build_path(results_dict)
 
-        self.align_destroy(result)
+        if destroy:
+            self.align_destroy(result)
 
         return results_dict
 
@@ -208,7 +209,7 @@ def build_score_matrix(n_elements, match_score, mismatch_score):
     return matrix_in_c
 
 
-def build_path(results:dict):
+def build_path(results:dict) -> None:
     """
     build cigar string and align path based on cigar array returned by ssw_align
     @param  q   query sequence
@@ -254,4 +255,3 @@ def build_path(results:dict):
 
     results['sCigar'] = sCigar
     results['sAlignment'] = "\n".join([sQ, sA, sR])
-    # return sCigar, sQ, sA, sR
