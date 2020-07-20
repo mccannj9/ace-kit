@@ -7,6 +7,7 @@ import sys
 from kit.finder import SwitchpointFinder
 from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
 from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
+from kit.utils import muscle
 
 from kit.html import build_html_output, major_html_template
 from kit.html import major_row_template, major_row_none_template
@@ -95,6 +96,16 @@ class Almitey(object):
                     clname = boundaries[0].contig.name.split("Contig")[0]
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
+
+                if nboundaries > 2:
+                    with open(f"{self.output_dir}/oriented_boundaries.fas", "w") as fas:
+                        for b, s in zip(boundaries, oriented_seqs):
+                            rec_id = f"{b.contig.name}_{b.side_as_l_or_r()}"
+                            print(f">{rec_id}\n{s.replace('-', '')}", file=fas)
+                    muscle(
+                        f"{self.output_dir}/oriented_boundaries.fas", f"{self.output_dir}/oriented_boundaries_align.html"
+                    )
+
 
         return cluster_output_dict
 
