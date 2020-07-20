@@ -1,4 +1,4 @@
-
+import subprocess
 import warnings
 
 import logomaker
@@ -7,6 +7,9 @@ import numpy
 from numpy.lib.stride_tricks import as_strided
 
 from matplotlib import pyplot
+
+blast_path = os.environ['blast_path'] if 'blast_path' in os.environ else 'blastn'
+muscle_path = os.environ['muscle_path'] if 'muscle_path' in os.environ else 'muscle'
 
 colors = {
     'A': 'blue',
@@ -234,3 +237,19 @@ def get_seq_from_reads(contig, p, b, e):
             print(seq)
 
     return reads
+
+
+def muscle(input:str, output:str, fmt="-html", path=muscle_path):
+
+    try:
+        args = [
+            path, '-in', input, '-out', output, fmt, "-diags"
+        ]
+        subprocess.check_call(args)
+
+    except subprocess.CalledProcessError as e:
+        call = " ".join(args)
+        print(f"Muscle call: {call} generated the following error:\n{e}")
+        return e
+
+    return output
