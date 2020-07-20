@@ -63,7 +63,7 @@ class Almitey(object):
                 window_size=self.window_size, min_depth=self.min_depth,
                 min_read_prop=self.min_read_prop
             )
-            contigs, all_reads = finder.fit()
+            contigs, boundaries, oriented_seqs, all_reads = finder.fit()
             cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
                 contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
@@ -75,18 +75,14 @@ class Almitey(object):
                     x.length for x in sorted_contigs
                 ]) / len(sorted_contigs))
 
-            nboundaries = sum([c.nboundaries for c in sorted_contigs])
+            nboundaries = len(boundaries)
             print(f"Total boundaries found: {nboundaries}", file=log)
             cluster_output_dict['num_boundaries'] = nboundaries
 
             if nboundaries:
-                boundaries = []
-                for c in sorted_contigs:
-                    boundaries += c.boundaries
-                boundaries.sort(key=lambda x: x.rate, reverse=True)
                 cluster_output_dict['avg_boundary_score'] = round(sum([
                     x.rate for x in boundaries
-                ]) / len(boundaries))
+                ]) / nboundaries)
 
                 for b in boundaries:
                     b.logo_path = os.path.basename(b.logo_path)

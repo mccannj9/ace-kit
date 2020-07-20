@@ -232,5 +232,5 @@ def get_seq_from_reads(contig, p, b, e):
                 diff_pad = diff * "_"
                 seq = f"{diff_pad}{read.seq[:e-diff+b]}"
             print(seq)
-    
+
     return reads
