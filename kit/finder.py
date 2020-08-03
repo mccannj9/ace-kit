@@ -5,6 +5,9 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.contig import Boundary
+from kit.utils import rc
+
+from ssw.lib import CSmithWaterman
 
 
 class SwitchpointFinder:
@@ -24,20 +27,25 @@ class SwitchpointFinder:
 
         with open(f"{self.outdir}/boundaries_from_contigs.fas", "w") as self.fasta:
             all_reads = {}
+            all_boundaries = []
             for _ in range(self.acefile.ncontigs):
                 self.current_ctg = next(self.acefile)
                 all_reads.update({x.name: x for x in self.current_ctg.reads})
                 if self.current_ctg.nreads / self.acefile.nreads > self.min_read_prop:
                     print(self.current_ctg.name)
                     cands, derivs = self.find_candidates()
-                    self.generate_output_for_boundaries(cands, derivs)
+                    boundaries = self.generate_output_for_boundaries(cands, derivs)
                     contigs_list.append(self.current_ctg)
+                    all_boundaries += boundaries
+            all_boundaries.sort(key=lambda x: x.rate, reverse=True)
+            oriented_seqs = self.orient_boundaries(all_boundaries)
 
-        return contigs_list, all_reads
+        return contigs_list, all_boundaries, oriented_seqs, all_reads
 
     def generate_output_for_boundaries(self, cands, slopes):
         ctg = self.current_ctg
         contig_plot = ctg.generate_figure()
+        boundaries = []
         for c, d in zip(numpy.flatnonzero(cands), slopes[cands]):
 
             boundary = Boundary(ctg, ctg.name, c, ctg.depth[c], numpy.sign(d), abs(d))
@@ -48,7 +56,10 @@ class SwitchpointFinder:
             boundary.set_logo(save=logo_out)
             ctg.add_candidate_switchpoint_to_fig(contig_plot, c)
             contig_plot.savefig(f"{self.outdir}/{ctg.name}.png")
+            boundaries.append(boundary)
         pyplot.close(contig_plot)
+
+        return boundaries
 
     def find_candidates(self):
         contig = self.current_ctg
@@ -80,8 +91,35 @@ class SwitchpointFinder:
 
         return candidates.astype(bool), derivatives
 
-    def kmeans_orient_boundaries(self, boundaries):
-        sorted_boundaries = sorted(boundaries, key=lambda x: x.rate)
+    def orient_boundaries(self, boundaries, **params):
+        if len(boundaries) < 1:
+            return []
+        aligner = CSmithWaterman()
+        aligner.set_alignment_params(**params)
 
-        top = sorted_boundaries[0]
-        return top
+        # assume boundaries are sorted
+        top = boundaries[0].seq
+        ids = [b._id for b in boundaries]
+        seqs = [b.seq for b in boundaries]
+        oriented = []
+        results = {}
+
+        for _id, seq in zip(ids, seqs):
+            res_0 = aligner.align_sequence_pair(seq, top)
+            res_1 = aligner.align_sequence_pair(
+                "".join([rc[x] for x in seq[::-1]]), top
+            )
+
+            if res_0['nScore'] > res_1['nScore']:
+                results[_id] = 1
+                oriented.append(seq)
+            elif res_0['nScore'] < res_1['nScore']:
+                results[_id] = 0
+                oriented.append(
+                    "".join([rc[x] for x in seq[::-1]])
+                )
+            else:
+                # ambiguous result, should not happen
+                results[_id] = None
+
+        return oriented

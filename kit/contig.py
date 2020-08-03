@@ -102,9 +102,12 @@ def get_sequences_for_contig(ctg):
         if line.startswith('RD'):
             seq = []
             count = 1
-            while l:= ctg.lines[i+count]:
+            l = ctg.lines[i+count]
+            # while l:= ctg.lines[i+count]:
+            while l:
                 seq.append(l)
                 count += 1
+                l = ctg.lines[i+count]
             seqs.append("".join(seq))
     return seqs
 
@@ -330,6 +333,10 @@ class Boundary:
 
     def boundary_seq_as_fasta(self):
         return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
+
+    @property
+    def _id(self):
+        return f">{self.contig.name}_{self.side_as_l_or_r()}"
 
     def get_reads_from_boundary(self, buffer=0):
         reads = []

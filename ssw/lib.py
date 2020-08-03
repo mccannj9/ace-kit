@@ -16,28 +16,7 @@ default_alignment_parameters = {
     'match': 2, 'mismatch': 2, 'gap_open': 3, 'gap_extend': 1, 'nflag': 2
 }
 
-
-def seq_to_int_array(seq):
-    c_seq_array_dec = len(seq) * ctypes.c_int8
-    c_seq_array = c_seq_array_dec()
-
-    for i, e in enumerate(seq):
-        if e in base_to_int:
-            c_seq_array[i] = base_to_int[e]
-        else:
-            c_seq_array[i] = bases[-1]
-
-    return c_seq_array
-
-
-def build_score_matrix(n_elements, match_score, mismatch_score):
-    score_matrix = numpy.ones(
-        (n_elements, n_elements), dtype=numpy.int8
-    ) * -mismatch_score
-    numpy.fill_diagonal(score_matrix, match_score)
-    matrix_in_c = (ctypes.c_int8 * score_matrix.size)()
-    matrix_in_c[:] = score_matrix.flatten()
-    return matrix_in_c
+cigar_info = 'MIDNSHP=X'
 
 
 class CProfile(ctypes.Structure):
@@ -63,7 +42,7 @@ class CAlignmentResult(ctypes.Structure):
         ('nRefEnd2', ctypes.c_int32),
         ('sCigar', ctypes.POINTER(ctypes.c_uint32)),
         ('nCigarLen', ctypes.c_int32)
-    ] 
+    ]
 
 
 class CSmithWaterman:
@@ -126,6 +105,13 @@ class CSmithWaterman:
             'match': 0, 'mismatch': 0, 'gap_open': 0, 'gap_extend': 0, 'nflag': 0
         }
 
+        # adding param attrs here, because otherwise editor complains about not having them
+        self.match = None
+        self.mismatch = None
+        self.gap_open = None
+        self.gap_extend = None
+        self.nflag = None
+
         self.parameters_set = False
 
     def set_alignment_params(self, **kwargs):
@@ -146,6 +132,10 @@ class CSmithWaterman:
 
         self.parameters_set = True
 
+    def view_alignment_params(self):
+        for k in self.parameters:
+            print(k, self.__dict__[k])
+
     def reset_parameters(self, **kwargs):
         # unset parameters and remove them as members of object
         if not(kwargs):
@@ -158,10 +148,14 @@ class CSmithWaterman:
                 if k in self.parameters:
                     self.__dict__[k] = kwargs[k]
 
-    def align_sequence_pair(self, query, target):
+    def align_sequence_pair(self, query, target, destroy=True):
         if not(self.parameters_set):
             print("Please set parameters before trying to align sequences")
             return None
+
+        results_dict  = {}
+        results_dict['Query'] = query
+        results_dict['Target'] = target
 
         query = seq_to_int_array(query)
         target = seq_to_int_array(target)
@@ -176,8 +170,88 @@ class CSmithWaterman:
             self.gap_extend, self.nflag, 0, 0, ctypes.c_int32(mask_length)
         )
 
-        results_dict = {}
-        for k, ty in result.contents._fields_:
+        for k, _ in result.contents._fields_:
             results_dict[k] = result.contents.__getattribute__(k)
 
+        # add cigar array to results dict
+        results_dict['lCigar'] = [
+            result.contents.sCigar[x] for x in range(results_dict['nCigarLen'])
+        ]
+
+        build_path(results_dict)
+
+        if destroy:
+            self.align_destroy(result)
+
         return results_dict
+
+
+def seq_to_int_array(seq):
+    c_seq_array_dec = len(seq) * ctypes.c_int8
+    c_seq_array = c_seq_array_dec()
+
+    for i, e in enumerate(seq):
+        if e in base_to_int:
+            c_seq_array[i] = base_to_int[e]
+        else:
+            c_seq_array[i] = bases[-1]
+
+    return c_seq_array
+
+
+def build_score_matrix(n_elements, match_score, mismatch_score):
+    score_matrix = numpy.ones(
+        (n_elements, n_elements), dtype=numpy.int8
+    ) * -mismatch_score
+    numpy.fill_diagonal(score_matrix, match_score)
+    matrix_in_c = (ctypes.c_int8 * score_matrix.size)()
+    matrix_in_c[:] = score_matrix.flatten()
+    return matrix_in_c
+
+
+def build_path(results:dict) -> None:
+    """
+    build cigar string and align path based on cigar array returned by ssw_align
+    @param  q   query sequence
+    @param  r   reference sequence
+    @param  nQryBeg   begin position of query sequence
+    @param  nRefBeg   begin position of reference sequence
+    @param  lCigar   cigar array
+    """
+    sCigarInfo = 'MIDNSHP=X'
+    sCigar = ''
+    sQ = 'Q: '
+    sA = '   '
+    sR = 'T: '
+    nQOff = results['nQryBeg']
+    nROff = results['nRefBeg']
+    for x in results['lCigar']:
+        n = x >> 4
+        m = x & 15
+        if m > 8:
+            c = 'M'
+        else:
+            c = sCigarInfo[m]
+        sCigar += str(n) + c
+
+        if c == 'M':
+            sQ += results['Query'][nQOff : nQOff+n]
+            sA += ''.join([
+                '|' if results['Query'][nQOff+j] == results['Target'][nROff+j] else '*' for j in range(n)
+            ])
+            sR += results['Target'][nROff : nROff+n]
+            nQOff += n
+            nROff += n
+        elif c == 'I':
+            sQ += results['Query'][nQOff : nQOff+n]
+            sA += ' ' * n
+            sR += '-' * n
+            nQOff += n
+        elif c == 'D':
+            sQ += '-' * n
+            sA += ' ' * n
+            sR += results['Target'][nROff : nROff+n]
+            nROff += n
+
+    results['sCigar'] = sCigar
+    results['sAlignment'] = "\n".join([sQ, sA, sR])
