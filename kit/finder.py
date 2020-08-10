@@ -98,28 +98,32 @@ class SwitchpointFinder:
         aligner.set_alignment_params(**params)
 
         # assume boundaries are sorted
-        top = boundaries[0].seq
+        # top = boundaries[0].seq
+        top = boundaries[0]
         ids = [b._id for b in boundaries]
         seqs = [b.seq for b in boundaries]
         oriented = []
         results = {}
 
-        for _id, seq in zip(ids, seqs):
-            res_0 = aligner.align_sequence_pair(seq, top)
+        for b in boundaries[1:]:
+            res_0 = aligner.align_sequence_pair(b.seq, top.seq)
             res_1 = aligner.align_sequence_pair(
-                "".join([rc[x] for x in seq[::-1]]), top
+                "".join([rc[x] for x in b.seq[::-1]]), top.seq
             )
 
             if res_0['nScore'] > res_1['nScore']:
-                results[_id] = 1
-                oriented.append(seq)
+                results[b._id] = 1
+                oriented.append(b.seq)
+                b.orient = 0
             elif res_0['nScore'] < res_1['nScore']:
-                results[_id] = 0
+                results[b._id] = 0
                 oriented.append(
-                    "".join([rc[x] for x in seq[::-1]])
+                    "".join([rc[x] for x in b.seq[::-1]])
                 )
+                b.orient = 1
             else:
                 # ambiguous result, should not happen
-                results[_id] = None
+                results[b._id] = None
+                b.orient = -999
 
         return oriented

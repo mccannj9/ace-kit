@@ -182,6 +182,7 @@ class CSmithWaterman:
 
         if destroy:
             self.align_destroy(result)
+            self.init_destroy(query_profile)
 
         return results_dict
 
