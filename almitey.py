@@ -31,7 +31,7 @@ class Almitey(object):
         if not(logfile):
             self.log_filename = f"{self.output_dir}/logfile.txt"
 
-    def run(self, cluster):
+    def run(self):
 
         cluster_output_dict = {
             'cluster': '',
@@ -39,7 +39,9 @@ class Almitey(object):
             'num_boundaries': 0,
             'avg_contig_length': 0,
             'avg_boundary_score': 0,
-            'minor_path': ""
+            'minor_path': "",
+            "contigs": [],
+            "boundaries": []
         }
 
         clname = os.path.basename(self.input_dir).split("_")[-1]
@@ -79,6 +81,8 @@ class Almitey(object):
             nboundaries = len(boundaries)
             print(f"Total boundaries found: {nboundaries}", file=log)
             cluster_output_dict['num_boundaries'] = nboundaries
+            cluster_output_dict["contigs"] = contigs
+            cluster_output_dict["boundaries"] = boundaries
 
             if nboundaries:
                 cluster_output_dict['avg_boundary_score'] = round(sum([
