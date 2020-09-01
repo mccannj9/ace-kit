@@ -368,9 +368,18 @@ class Boundary:
                     pairs_dict[r.name[:-1]].sort(key=lambda x: x.name[:-1])
 
     def table_row_template(self):
-        d = self.__dict__
+        d = self.__dict__.copy()
         d['side'] = self.side_as_l_or_r()
         d['side'] = "left" if d['side'] == "l" else "right"
         d['pos'] = self.pos - self.contig.shift
         d['rate'] = round(d['rate'], 1)
         return minor_row_template.safe_substitute(d)
+
+    def extract_seq_from_contig(self, length):
+        x = int(self.pos - self.contig.shift)
+        y = int(x + self.side * (length))
+
+        if x > y:
+            return self.contig.seq[y:x+1].replace("*", "")
+
+        return self.contig.seq[x:x+y].replace("*", "")
