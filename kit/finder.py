@@ -1,4 +1,8 @@
 
+import itertools
+from typing import List
+from statistics import mean
+
 import numpy
 
 from matplotlib import pyplot
@@ -21,6 +25,8 @@ class SwitchpointFinder:
         self.min_read_prop = min_read_prop
         self.outdir = outdir
         self.results = {}
+        self.mean_contig_length = None
+        self.min_contig_length = None
 
     def fit(self):
         contigs_list = []
@@ -39,6 +45,12 @@ class SwitchpointFinder:
                     all_boundaries += boundaries
             all_boundaries.sort(key=lambda x: x.rate, reverse=True)
             oriented_seqs = self.orient_boundaries(all_boundaries)
+
+        contig_lengths = [c.length for c in contigs_list if c.boundaries]
+
+        if contig_lengths:
+            self.mean_contig_length = mean(contig_lengths)
+            self.min_contig_length = min(contig_lengths)
 
         return contigs_list, all_boundaries, oriented_seqs, all_reads
 
@@ -91,17 +103,14 @@ class SwitchpointFinder:
 
         return candidates.astype(bool), derivatives
 
-    def orient_boundaries(self, boundaries, **params):
+    def orient_boundaries(self, boundaries:BoundaryVec, **params):
         if len(boundaries) < 1:
             return []
         aligner = CSmithWaterman()
         aligner.set_alignment_params(**params)
 
         # assume boundaries are sorted
-        # top = boundaries[0].seq
         top = boundaries[0]
-        ids = [b._id for b in boundaries]
-        seqs = [b.seq for b in boundaries]
         oriented = []
         results = {}
 
@@ -127,3 +136,34 @@ class SwitchpointFinder:
                 b.orient = -999
 
         return oriented
+
+    def estimate_TIR_length(self, boundaries:BoundaryVec, **align_params):
+        orientations = set([
+            b.orient for b in boundaries
+        ])
+
+        if len(boundaries) < 2 and len(orientations) != 2:
+            print("Cannot estimate TIR length")
+            return None
+
+        ext = self.min_contig_length // 2
+
+        aligner = CSmithWaterman(debug=False)
+        aligner.set_alignment_params(**align_params)
+
+        b0 = [b for b in boundaries if not(b.orient)]
+        b1 = [b for b in boundaries if b.orient]
+        alignment_lengths = []
+
+        for x, y in itertools.product(b0, b1):
+            seq1 = x.extract_seq_from_contig(ext)
+            # extract and revcomp
+            seq2 = y.extract_seq_from_contig(ext)
+            seq2 = "".join([rc[x] for x in seq2[::-1]])
+            results = aligner.align_sequence_pair(seq1, seq2)
+            print(x.contig, x.side, x.orient, y.contig, y.side, y.orient)
+            alignment_lengths.append(
+                abs(results['nRefEnd'] - results['nRefBeg'])
+            )
+            print(results['sAlignment'])
+        return mean(alignment_lengths), alignment_lengths
