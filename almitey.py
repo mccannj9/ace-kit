@@ -61,12 +61,12 @@ class Almitey(object):
             print(f"{self.output_dir} exists already. Continuing...")
 
         with open(self.log_filename, 'w') as log:
-            finder = SwitchpointFinder(
+            self.finder = SwitchpointFinder(
                 self.ace_filename, outdir=self.output_dir,
                 window_size=self.window_size, min_depth=self.min_depth,
                 min_read_prop=self.min_read_prop
             )
-            contigs, boundaries, oriented_seqs, all_reads = finder.fit()
+            contigs, boundaries, oriented_seqs, all_reads = self.finder.fit()
             cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
                 contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
@@ -130,7 +130,8 @@ class Almitey(object):
             self.input_dir = cluster
             self.output_dir = f"{cluster}/almitey"
             self.log_filename = f"{self.output_dir}/almitey_log.txt"
-            result = self.run(cluster)
+            # result = self.run(cluster)
+            result = self.run()
 
             if result['minor_path']:
                 table_rows.append(major_row_template.safe_substitute(result))
