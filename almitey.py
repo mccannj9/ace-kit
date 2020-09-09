@@ -5,12 +5,11 @@ import glob
 import sys
 
 from kit.finder import SwitchpointFinder
-from kit.blast import set_result_orientation, quick_blastn, parse_blast_output
-from kit.utils import find_all_boundary_reads, pair_boundary_reads, pairs_with_correct_orient
 from kit.utils import muscle
 
 from kit.html import build_html_output, major_html_template
 from kit.html import major_row_template, major_row_none_template
+
 
 class Almitey(object):
     def __init__(
@@ -110,7 +109,6 @@ class Almitey(object):
                         f"{self.output_dir}/oriented_boundaries.fas", f"{self.output_dir}/oriented_boundaries_align.html"
                     )
 
-
         return cluster_output_dict
 
     def run_on_all_clusters(self):
@@ -136,10 +134,14 @@ class Almitey(object):
             if result['minor_path']:
                 table_rows.append(major_row_template.safe_substitute(result))
             else:
-                table_rows.append(major_row_none_template.safe_substitute(result))
+                table_rows.append(
+                    major_row_none_template.safe_substitute(result)
+                )
 
         table_rows = "\n".join(table_rows)
 
         with open(self.major_html_fn, 'w') as major:
-            html = major_html_template.safe_substitute({'table_rows': table_rows})
+            html = major_html_template.safe_substitute(
+                {'table_rows': table_rows}
+            )
             print(html, file=major)
