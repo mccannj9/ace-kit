@@ -4,9 +4,6 @@ import inspect
 import ctypes
 import numpy
 
-from kit.utils import rc
-
-
 bases = ['A', 'C', 'G', 'T', 'N']
 base_to_int = {x: i for i, x in enumerate(bases)}
 int_to_base = {i: x for i, x in enumerate(bases)}
@@ -153,7 +150,7 @@ class CSmithWaterman:
             print("Please set parameters before trying to align sequences")
             return None
 
-        results_dict  = {}
+        results_dict = {}
         results_dict['Query'] = query
         results_dict['Target'] = target
 
@@ -210,9 +207,9 @@ def build_score_matrix(n_elements, match_score, mismatch_score):
     return matrix_in_c
 
 
-def build_path(results:dict) -> None:
+def build_path(results: dict) -> None:
     """
-    build cigar string and align path based on cigar array returned by ssw_align
+    build cigar string and align path from cigar returned by ssw_align
     @param  q   query sequence
     @param  r   reference sequence
     @param  nQryBeg   begin position of query sequence
@@ -236,22 +233,22 @@ def build_path(results:dict) -> None:
         sCigar += str(n) + c
 
         if c == 'M':
-            sQ += results['Query'][nQOff : nQOff+n]
+            sQ += results['Query'][nQOff: nQOff+n]
             sA += ''.join([
                 '|' if results['Query'][nQOff+j] == results['Target'][nROff+j] else '*' for j in range(n)
             ])
-            sR += results['Target'][nROff : nROff+n]
+            sR += results['Target'][nROff: nROff+n]
             nQOff += n
             nROff += n
         elif c == 'I':
-            sQ += results['Query'][nQOff : nQOff+n]
+            sQ += results['Query'][nQOff: nQOff+n]
             sA += ' ' * n
             sR += '-' * n
             nQOff += n
         elif c == 'D':
             sQ += '-' * n
             sA += ' ' * n
-            sR += results['Target'][nROff : nROff+n]
+            sR += results['Target'][nROff: nROff+n]
             nROff += n
 
     results['sCigar'] = sCigar
