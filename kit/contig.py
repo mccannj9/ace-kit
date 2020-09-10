@@ -309,13 +309,13 @@ class Boundary:
     def set_boundary_sequence(self, l=30):
         pos = self.pos - self.contig.shift
         if self.side == 1:
-            self.seq = self.contig.seq[pos:pos+l].replace("*", "")
+            self.seq = self.contig.seq[pos-1:pos+l-1].replace("*", "")
         else:
-            self.seq = self.contig.seq[pos+1-l:pos+1].replace("*", "")
+            self.seq = self.contig.seq[pos-l:pos].replace("*", "")
 
     def set_logo(self, l=30, figsize=(10, 2.5), save=None):
         seqs = self.contig.get_reads_with_position(self.pos, self.side * self.rate, l=30)
-        df = create_seqlogo_dataframe(seqs)
+        counts, freqs, df = create_seqlogo_dataframe(seqs)
 
         fig, ax = pyplot.subplots(1, figsize=figsize)
         self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
@@ -380,6 +380,8 @@ class Boundary:
         y = int(x + self.side * (length))
 
         if x > y:
-            return self.contig.seq[y:x+1].replace("*", "")
+            c = self.contig.seq[y:x+1].count("*")
+            return self.contig.seq[y:x+1+c].replace("*", "")
 
-        return self.contig.seq[x:x+y].replace("*", "")
+        c = self.contig.seq[x:x+y].count("*")
+        return self.contig.seq[x:x+y+c].replace("*", "")

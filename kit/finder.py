@@ -1,6 +1,5 @@
 
 import itertools
-from typing import List
 from typing import List, Tuple
 from statistics import mean
 
