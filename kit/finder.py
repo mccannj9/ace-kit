@@ -13,6 +13,7 @@ from kit.utils import rc
 
 from ssw.lib import CSmithWaterman
 
+BoundaryVec = List[Boundary]
 
 class SwitchpointFinder:
     def __init__(
@@ -97,13 +98,16 @@ class SwitchpointFinder:
         min_der_idx = derivatives.argmin()
         max_der_idx = derivatives.argmax()
         derivatives_mask = numpy.zeros(shape=derivatives.shape)
-        derivatives_mask[min_der_idx] = 1
-        derivatives_mask[max_der_idx] = 1
+        # derivatives_mask[min_der_idx] = 1
+        # derivatives_mask[max_der_idx] = 1
+        derivatives_mask[derivatives.argmin()] = 1
+        derivatives_mask[derivatives.argmax()] = 1
+        
         candidates = sc * dmask * derivatives_mask
 
         return candidates.astype(bool), derivatives
 
-    def orient_boundaries(self, boundaries:BoundaryVec, **params):
+    def orient_boundaries(self, boundaries: BoundaryVec, **params):
         if len(boundaries) < 1:
             return []
         aligner = CSmithWaterman()
@@ -112,32 +116,29 @@ class SwitchpointFinder:
         # assume boundaries are sorted
         top = boundaries[0]
         oriented = []
-        results = {}
 
         for b in boundaries[1:]:
             res_0 = aligner.align_sequence_pair(b.seq, top.seq)
             res_1 = aligner.align_sequence_pair(
                 "".join([rc[x] for x in b.seq[::-1]]), top.seq
             )
+            print(res_0['nScore'], res_1['nScore'], b.contig_name)
 
             if res_0['nScore'] > res_1['nScore']:
-                results[b._id] = 1
                 oriented.append(b.seq)
                 b.orient = 0
             elif res_0['nScore'] < res_1['nScore']:
-                results[b._id] = 0
                 oriented.append(
                     "".join([rc[x] for x in b.seq[::-1]])
                 )
                 b.orient = 1
             else:
                 # ambiguous result, should not happen
-                results[b._id] = None
                 b.orient = -999
 
         return oriented
 
-    def estimate_TIR_length(self, boundaries:BoundaryVec, **align_params):
+    def estimate_TIR_length(self, boundaries: BoundaryVec, **align_params):
         orientations = set([
             b.orient for b in boundaries
         ])
@@ -147,6 +148,7 @@ class SwitchpointFinder:
             return None
 
         ext = self.min_contig_length // 2
+        ext = 80
 
         aligner = CSmithWaterman(debug=False)
         aligner.set_alignment_params(**align_params)
@@ -161,7 +163,8 @@ class SwitchpointFinder:
             seq2 = y.extract_seq_from_contig(ext)
             seq2 = "".join([rc[x] for x in seq2[::-1]])
             results = aligner.align_sequence_pair(seq1, seq2)
-            print(x.contig, x.side, x.orient, y.contig, y.side, y.orient)
+            l = abs(results['nRefEnd'] - results['nRefBeg'])
+            print(x.contig, x.side, x.orient, y.contig, y.side, y.orient, l)
             alignment_lengths.append(
                 abs(results['nRefEnd'] - results['nRefBeg'])
             )
