@@ -1,19 +1,102 @@
 
 import itertools
 from typing import List
+from typing import List, Tuple
 from statistics import mean
 
 import numpy
 
 from matplotlib import pyplot
 
-from kit.ace import AceFile
+from kit.ace import AceFile, NewAceFile
 from kit.contig import Boundary
+from kit.new_contig import NewContig, NewBoundary
 from kit.utils import rc
 
 from ssw.lib import CSmithWaterman
 
 BoundaryVec = List[Boundary]
+Boundaries = List[NewBoundary]
+Contigs = List[NewContig]
+Result = Tuple[Boundaries, Contigs]
+
+
+class NewSwitchpointFinder(object):
+    def __init__(
+        self,
+        input_fn: str,
+        outdir: str = "./",
+        window_size: int = 7,
+        min_depth: int = 10,
+        min_read_prop: float = 0.01,
+        min_rate_change: float = 0.10,
+    ) -> None:
+
+        self.acefile = NewAceFile(input_fn)
+        self.window_size = window_size
+        self.min_depth = min_depth
+        self.min_read_prop = min_read_prop
+        self.min_rate_change = 0.10
+        self.outdir = outdir
+        self.results = {}
+        self.mean_contig_length = None
+        self.min_contig_length = None
+
+    def fit(self):
+        all_contigs = []
+        all_boundaries = []
+
+        for _ in range(self.acefile.ncontigs):
+            contig = next(self.acefile)
+            if contig.nreads / self.acefile.nreads > self.min_read_prop:
+                print(contig.name)
+                self.find_candidates(contig)
+                all_contigs.append(contig)
+                all_boundaries += contig.boundaries
+
+        all_boundaries.sort(key=lambda x: x.rate, reverse=True)
+        return all_contigs, all_boundaries
+
+    def find_candidates(self, contig: NewContig, **kwargs) -> None:
+        # here we find out when the sign of the difference between
+        # unmasked and masked counts changes to find candidate boundaries
+        sign_diff = numpy.sign(contig.masking_diff)
+        sign_change = (
+            (numpy.roll(sign_diff, 1) - sign_diff) != 0
+        ).astype(int)
+
+        side = self.window_size // 2
+        derivatives = numpy.zeros(shape=sign_diff.shape, dtype=float)
+        for c in numpy.flatnonzero(sign_change):
+            # this if statement disallows boundaries on the edges, because they
+            # don't contain full windows (windows are center-anchored -> 00100)
+            if (c-side < 0) or (c + side + 1 > contig.depth.size):
+                sign_change[c] = 0
+            else:
+                win_depth = contig.depth[c-side:c+side+1].mean()
+                derivatives[c] = (
+                    contig.masking_diff[c-side] - contig.masking_diff[c+side+1]
+                ) / self.window_size
+
+                if abs(derivatives[c]) / win_depth < self.min_rate_change:
+                    sign_change[c] = 0
+
+        # get the idx of min and max of derivative
+        deriv_mask = numpy.zeros(shape=derivatives.shape)
+        deriv_mask[derivatives.argmin()] = 1
+        deriv_mask[derivatives.argmax()] = 1
+        cands = sign_change * contig.depth_mask(self.min_depth) * deriv_mask
+
+        contig.generate_figure()
+
+        for c, d in zip(numpy.flatnonzero(cands), derivatives[cands.astype(bool)]):
+            print(c, d)
+            boundary = NewBoundary(
+                contig, c, numpy.sign(d), abs(d)
+            )
+            boundary.set_logo(**kwargs)
+            contig.boundaries.append(boundary)
+
 
 class SwitchpointFinder:
     def __init__(
