@@ -60,9 +60,7 @@ class NewSwitchpointFinder(object):
         # here we find out when the sign of the difference between
         # unmasked and masked counts changes to find candidate boundaries
         sign_diff = numpy.sign(contig.masking_diff)
-        sign_change = (
-            (numpy.roll(sign_diff, 1) - sign_diff) != 0
-        ).astype(int)
+        sign_change = ((numpy.roll(sign_diff, 1) - sign_diff) != 0).astype(int)
 
         side = self.window_size // 2
         derivatives = numpy.zeros(shape=sign_diff.shape, dtype=float)
@@ -74,7 +72,7 @@ class NewSwitchpointFinder(object):
             else:
                 win_depth = contig.depth[c-side:c+side+1].mean()
                 derivatives[c] = (
-                    contig.masking_diff[c-side] - contig.masking_diff[c+side+1]
+                    contig.masking_diff[c+side] - contig.masking_diff[c-side]
                 ) / self.window_size
 
                 if abs(derivatives[c]) / win_depth < self.min_rate_change:
@@ -85,7 +83,6 @@ class NewSwitchpointFinder(object):
         deriv_mask[derivatives.argmin()] = 1
         deriv_mask[derivatives.argmax()] = 1
         cands = sign_change * contig.depth_mask(self.min_depth) * deriv_mask
-
         contig.generate_figure()
 
         for c, d in zip(numpy.flatnonzero(cands), derivatives[cands.astype(bool)]):
@@ -184,7 +181,7 @@ class SwitchpointFinder:
         # derivatives_mask[max_der_idx] = 1
         derivatives_mask[derivatives.argmin()] = 1
         derivatives_mask[derivatives.argmax()] = 1
-        
+
         candidates = sc * dmask * derivatives_mask
 
         return candidates.astype(bool), derivatives
