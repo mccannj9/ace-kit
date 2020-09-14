@@ -316,7 +316,7 @@ class NewBoundary:
     def add_boundary_to_contig_profile_plot(self, contig: NewContig) -> None:
         ymax = contig.depth.max()
         for ax in contig.fig.axes:
-            ax.vlines(self.pos, 0, ymax, linestyles='dotted')
+            ax.vlines(self.pos - self.contig.shift, 0, ymax, linestyles='dotted')
 
     def set_logo(
         self,
@@ -342,13 +342,6 @@ class NewBoundary:
     def side_as_l_or_r(self):
         return "l" if self.side == 1 else "r"
 
-    def boundary_seq_as_fasta(self):
-        return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
-
-    @property
-    def _id(self):
-        return f">{self.contig.name}_{self.side_as_l_or_r()}"
-
     def table_row_template(self):
         d = self.__dict__.copy()
         d['side'] = self.side_as_l_or_r()
@@ -356,14 +349,3 @@ class NewBoundary:
         d['pos'] = self.pos - self.contig.shift
         d['rate'] = round(d['rate'], 1)
         return minor_row_template.safe_substitute(d)
-
-    def extract_seq_from_contig(self, length):
-        x = int(self.pos - self.contig.shift)
-        y = int(x + self.side * (length))
-
-        if x > y:
-            c = self.contig.seq[y:x+1].count("*")
-            return self.contig.seq[y:x+1+c].replace("*", "")
-
-        c = self.contig.seq[x:x+y].count("*")
-        return self.contig.seq[x:x+y+c].replace("*", "")

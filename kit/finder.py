@@ -29,6 +29,7 @@ class NewSwitchpointFinder(object):
         min_depth: int = 10,
         min_read_prop: float = 0.01,
         min_rate_change: float = 0.10,
+        overwrite: bool = False
     ) -> None:
 
         self.acefile = NewAceFile(input_fn)
@@ -41,9 +42,16 @@ class NewSwitchpointFinder(object):
         self.mean_contig_length = None
         self.min_contig_length = None
 
-    def fit(self):
-        all_contigs = []
-        all_boundaries = []
+        try:
+            os.mkdir(self.outdir)
+        except FileExistsError as e:
+            if overwrite:
+                print(f"{self.outdir} exists already. Continuing...")
+            else:
+                raise Exception(
+                    f"{self.outdir} exists, please delete before re-running"
+                )
+
     def fit(self) -> Tuple[Contigs, Boundaries]:
         all_contigs = Contigs([])
         all_boundaries = Boundaries([])
@@ -59,7 +67,7 @@ class NewSwitchpointFinder(object):
         all_boundaries.sort(key=lambda x: x.rate, reverse=True)
         return all_contigs, all_boundaries
 
-    def find_candidates(self, contig: NewContig, **kwargs) -> None:
+    def find_candidates(self, contig: NewContig) -> None:
         # here we find out when the sign of the difference between
         # unmasked and masked counts changes to find candidate boundaries
         sign_diff = numpy.sign(contig.masking_diff)
@@ -89,12 +97,19 @@ class NewSwitchpointFinder(object):
         contig.generate_figure()
 
         for c, d in zip(numpy.flatnonzero(cands), derivatives[cands.astype(bool)]):
-            print(c, d)
             boundary = NewBoundary(
                 contig, c, numpy.sign(d), abs(d)
             )
-            boundary.set_logo(**kwargs)
+            boundary.set_logo(
+                save=f"{self.outdir}/{contig.name}_{boundary.side_as_l_or_r()}.png"
+            )
+            boundary.add_boundary_to_contig_profile_plot(contig)
             contig.boundaries.append(boundary)
+
+        contig.fig.savefig(
+            f"{self.outdir}/{contig.name}.png", figsize=(6, 4)
+        )
+        pyplot.close(contig.fig)
 
 
 class SwitchpointFinder:
