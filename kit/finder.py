@@ -1,6 +1,7 @@
 
+import os
 import itertools
-from typing import List, Tuple
+from typing import List, Tuple, NewType
 from statistics import mean
 
 import numpy
@@ -15,9 +16,8 @@ from kit.utils import rc
 from ssw.lib import CSmithWaterman
 
 BoundaryVec = List[Boundary]
-Boundaries = List[NewBoundary]
-Contigs = List[NewContig]
-Result = Tuple[Boundaries, Contigs]
+Boundaries = NewType('Boundaries', List[NewBoundary])
+Contigs = NewType('Contigs', List[NewContig])
 
 
 class NewSwitchpointFinder(object):
@@ -44,13 +44,16 @@ class NewSwitchpointFinder(object):
     def fit(self):
         all_contigs = []
         all_boundaries = []
+    def fit(self) -> Tuple[Contigs, Boundaries]:
+        all_contigs = Contigs([])
+        all_boundaries = Boundaries([])
 
         for _ in range(self.acefile.ncontigs):
             contig = next(self.acefile)
             if contig.nreads / self.acefile.nreads > self.min_read_prop:
                 print(contig.name)
                 self.find_candidates(contig)
-                all_contigs.append(contig)
+                all_contigs += [contig]
                 all_boundaries += contig.boundaries
 
         all_boundaries.sort(key=lambda x: x.rate, reverse=True)
