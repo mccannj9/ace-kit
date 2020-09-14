@@ -4,7 +4,9 @@ import os
 import glob
 import sys
 
-from kit.finder import SwitchpointFinder
+from statistics import mean
+
+from kit.finder import SwitchpointFinder, NewSwitchpointFinder
 from kit.utils import muscle
 
 from kit.html import build_html_output, major_html_template
@@ -14,7 +16,7 @@ from kit.html import major_row_template, major_row_none_template
 class Almitey(object):
     def __init__(
         self, input_dir, output_dir, window_size=7, min_depth=10,
-        min_read_prop=0.01, logfile=None, suffices="fr"
+        min_read_prop=0.01, min_rate_change=0.10, logfile=None, suffices="fr"
     ):
 
         self.input_dir = input_dir
@@ -22,6 +24,7 @@ class Almitey(object):
         self.window_size = window_size
         self.min_depth = min_depth
         self.min_read_prop = min_read_prop
+        self.min_rate_change = min_rate_change
         self.log_filename = logfile
         self.suffices = suffices
         self.relative_loc = "seqclust/clustering/clusters"
@@ -30,7 +33,7 @@ class Almitey(object):
         if not(logfile):
             self.log_filename = f"{self.output_dir}/logfile.txt"
 
-    def run(self):
+    def run(self, overwrite=False):
 
         cluster_output_dict = {
             'cluster': '',
@@ -57,15 +60,19 @@ class Almitey(object):
             os.mkdir(self.output_dir)
 
         except FileExistsError:
-            print(f"{self.output_dir} exists already. Continuing...")
+            if overwrite:
+                print(f"{self.output_dir} exists already. Continuing...")
+            else:
+                raise Exception(
+                    f"{self.output_dir} exists, please delete before re-running"
+                )
 
         with open(self.log_filename, 'w') as log:
-            self.finder = SwitchpointFinder(
-                self.ace_filename, outdir=self.output_dir,
-                window_size=self.window_size, min_depth=self.min_depth,
-                min_read_prop=self.min_read_prop
+            self.finder = NewSwitchpointFinder(
+                self.ace_filename, outdir=self.output_dir
             )
-            contigs, boundaries, oriented_seqs, all_reads = self.finder.fit()
+            # contigs, boundaries, oriented_seqs, all_reads = self.finder.fit()
+            contigs, boundaries = self.finder.fit()
             cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
                 contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
@@ -84,9 +91,9 @@ class Almitey(object):
             cluster_output_dict["boundaries"] = boundaries
 
             if nboundaries:
-                cluster_output_dict['avg_boundary_score'] = round(sum([
+                cluster_output_dict['avg_boundary_score'] = round(mean(
                     x.rate for x in boundaries
-                ]) / nboundaries)
+                ))
 
                 for b in boundaries:
                     b.logo_path = os.path.basename(b.logo_path)
@@ -100,14 +107,14 @@ class Almitey(object):
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
 
-                if nboundaries > 2:
-                    with open(f"{self.output_dir}/oriented_boundaries.fas", "w") as fas:
-                        for b, s in zip(boundaries, oriented_seqs):
-                            rec_id = f"{b.contig.name}_{b.side_as_l_or_r()}"
-                            print(f">{rec_id}\n{s.replace('-', '')}", file=fas)
-                    muscle(
-                        f"{self.output_dir}/oriented_boundaries.fas", f"{self.output_dir}/oriented_boundaries_align.html"
-                    )
+                # if nboundaries > 2:
+                #     with open(f"{self.output_dir}/oriented_boundaries.fas", "w") as fas:
+                #         for b, s in zip(boundaries, oriented_seqs):
+                #             rec_id = f"{b.contig.name}_{b.side_as_l_or_r()}"
+                #             print(f">{rec_id}\n{s.replace('-', '')}", file=fas)
+                #     muscle(
+                #         f"{self.output_dir}/oriented_boundaries.fas", f"{self.output_dir}/oriented_boundaries_align.html"
+                #     )
 
         return cluster_output_dict
 

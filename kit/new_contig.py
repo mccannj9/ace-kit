@@ -24,7 +24,7 @@ regex = re.compile(
 pyplot.style.use('bmh')
 
 StringVector = List[str]
-
+sides = ["X", "left", "right"]
 
 @dataclass
 class NewRead:
@@ -249,7 +249,9 @@ class NewBoundary:
         rate: float,
     ) -> None:
         self.contig = contig
+        self.contig_name = contig.name
         self.pos = pos
+        self.depth = self.contig.depth[self.pos]
         self.side = side
         self.rate = rate
 
@@ -262,16 +264,20 @@ class NewBoundary:
         self.add_boundary_to_contig_profile_plot(contig)
 
     @property
-    def depth(self):
-        return self.contig.depth[self.pos]
-
-    @property
     def name(self):
         return f"{self.contig.name}_{self.side_as_l_or_r()}"
 
     @property
     def slope(self):
         return self.rate * self.side
+
+    def set_boundary_sequence(self, after: int=30) -> None:
+        pos = self.pos - self.contig.shift
+        if self.side == 1:
+            self.seq = self.contig.seq[pos-1:pos+after-1].replace("*", "")
+            self.seq
+        else:
+            self.seq = self.contig.seq[pos-after:pos].replace("*", "")
 
     def set_overlapping_reads(self) -> None:
         self.reads = self.contig.reads_on_position(self.pos)
@@ -344,8 +350,7 @@ class NewBoundary:
 
     def table_row_template(self):
         d = self.__dict__.copy()
-        d['side'] = self.side_as_l_or_r()
-        d['side'] = "left" if d['side'] == "l" else "right"
+        d['side'] = sides[int(self.side)]
         d['pos'] = self.pos - self.contig.shift
         d['rate'] = round(d['rate'], 1)
         return minor_row_template.safe_substitute(d)

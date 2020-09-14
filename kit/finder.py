@@ -42,16 +42,6 @@ class NewSwitchpointFinder(object):
         self.mean_contig_length = None
         self.min_contig_length = None
 
-        try:
-            os.mkdir(self.outdir)
-        except FileExistsError as e:
-            if overwrite:
-                print(f"{self.outdir} exists already. Continuing...")
-            else:
-                raise Exception(
-                    f"{self.outdir} exists, please delete before re-running"
-                )
-
     def fit(self) -> Tuple[Contigs, Boundaries]:
         all_contigs = Contigs([])
         all_boundaries = Boundaries([])
@@ -103,6 +93,7 @@ class NewSwitchpointFinder(object):
             boundary.set_logo(
                 save=f"{self.outdir}/{contig.name}_{boundary.side_as_l_or_r()}.png"
             )
+            boundary.set_boundary_sequence()
             boundary.add_boundary_to_contig_profile_plot(contig)
             contig.boundaries.append(boundary)
 
