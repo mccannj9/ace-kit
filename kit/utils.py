@@ -64,6 +64,7 @@ def count_zeros_per_position(reads):
         for i, b in enumerate(r):
             if b == "0":
                 counts[i] -= 1
+    counts[counts == 0] = len(reads)
     return counts
 
 
@@ -79,16 +80,12 @@ def create_seqlogo_dataframe(sequences):
         df[x] = (basemat == x).sum(axis=1)
 
     nonzero_counts = count_zeros_per_position(sequences)
-
-    # freqs = df / len(sequences)
     freqs = df.divide(nonzero_counts.reshape(-1, 1))
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'divide by zero encountered in log2')
         log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
-    # correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
-    # row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
     row_scale = numpy.log2(5) - (- (freqs * log_freqs)).sum(axis=1)
 
     return df, freqs, freqs.multiply(row_scale, axis=0)
