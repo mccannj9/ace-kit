@@ -338,7 +338,8 @@ class NewBoundary:
         self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
         self.logo.style_xticks(anchor=0, spacing=5, rotation=45)
         self.logo.ax.set_xlim([-1, len(df)])
-        self.logo.ax.set_ylabel('information (bits)')
+        self.logo.ax.set_xlabel('Position')
+        self.logo.ax.set_ylabel('Information (bits)')
 
         if save:
             fig.savefig(save)

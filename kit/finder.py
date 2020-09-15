@@ -10,7 +10,7 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile, NewAceFile
 from kit.contig import Boundary
-from kit.new_contig import NewContig, NewBoundary
+from kit.new_contig import NewContig, NewBoundary, sides
 from kit.utils import rc
 
 from ssw.lib import CSmithWaterman
@@ -88,7 +88,7 @@ class NewSwitchpointFinder(object):
 
         for c, d in zip(numpy.flatnonzero(cands), derivatives[cands.astype(bool)]):
             boundary = NewBoundary(
-                contig, c, numpy.sign(d), abs(d)
+                contig, c, int(numpy.sign(d)), abs(d)
             )
             boundary.set_logo(
                 save=f"{self.outdir}/{contig.name}_{boundary.side_as_l_or_r()}.png"
@@ -101,6 +101,21 @@ class NewSwitchpointFinder(object):
             f"{self.outdir}/{contig.name}.png", figsize=(6, 4)
         )
         pyplot.close(contig.fig)
+
+    def orient_boundaries(self, boundaries: Boundaries) -> List[str]:
+        fasta_output = ""
+        if len(boundaries) < 2:
+            return fasta_output
+
+        for b in boundaries:
+            if b.side == 1:
+                seq = b.seq
+            elif b.side == -1:
+                seq = "".join([rc[x] for x in b.seq[::-1]])
+
+            fasta_output += f">{b.contig.name}_{sides[b.side]}\n{seq}\n"
+
+        return fasta_output
 
 
 class SwitchpointFinder:

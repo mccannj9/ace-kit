@@ -6,7 +6,7 @@ import sys
 
 from statistics import mean
 
-from kit.finder import SwitchpointFinder, NewSwitchpointFinder
+from kit.finder import NewSwitchpointFinder
 from kit.utils import muscle
 
 from kit.html import build_html_output, major_html_template
@@ -71,7 +71,6 @@ class Almitey(object):
             self.finder = NewSwitchpointFinder(
                 self.ace_filename, outdir=self.output_dir
             )
-            # contigs, boundaries, oriented_seqs, all_reads = self.finder.fit()
             contigs, boundaries = self.finder.fit()
             cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
@@ -107,14 +106,15 @@ class Almitey(object):
                     html_text = build_html_output(clname, boundaries)
                     print(html_text, file=html)
 
-                # if nboundaries > 2:
-                #     with open(f"{self.output_dir}/oriented_boundaries.fas", "w") as fas:
-                #         for b, s in zip(boundaries, oriented_seqs):
-                #             rec_id = f"{b.contig.name}_{b.side_as_l_or_r()}"
-                #             print(f">{rec_id}\n{s.replace('-', '')}", file=fas)
-                #     muscle(
-                #         f"{self.output_dir}/oriented_boundaries.fas", f"{self.output_dir}/oriented_boundaries_align.html"
-                #     )
+            if nboundaries >= 2:
+                with open(f"{self.output_dir}/oriented_boundaries.fas", "w") as fas:
+                    output = self.finder.orient_boundaries(boundaries)
+                    print(output, file=fas, end="")
+
+                muscle(
+                    f"{self.output_dir}/oriented_boundaries.fas",
+                    f"{self.output_dir}/oriented_boundaries_align.html"
+                )
 
         return cluster_output_dict
 
@@ -135,7 +135,6 @@ class Almitey(object):
             self.input_dir = cluster
             self.output_dir = f"{cluster}/almitey"
             self.log_filename = f"{self.output_dir}/almitey_log.txt"
-            # result = self.run(cluster)
             result = self.run()
 
             if result['minor_path']:
