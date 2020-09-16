@@ -74,6 +74,9 @@ major_table_row = """
                     <div class="table-body-cell">
                         $avg_boundary_score
                     </div>
+                    <div class="table-body-cell">
+                        <a href="$alignment_path">alignment</a>
+                    </div>
                 </div>
 """
 
@@ -93,6 +96,9 @@ major_table_row_none = """
                     </div>
                     <div class="table-body-cell">
                         $avg_boundary_score
+                    </div>
+                    <div class="table-body-cell">
+                        alignment
                     </div>
                 </div>
 """
@@ -116,6 +122,7 @@ major_html = """
                 <div class="table-header-cell">Number of Boundaries</div>
                 <div class="table-header-cell">Average Contig Length</div>
                 <div class="table-header-cell">Average Boundary Score</div>
+                <div class="table-header-cell">Alignment</div>
             </div>
             <div id="table-body">
                 $table_rows

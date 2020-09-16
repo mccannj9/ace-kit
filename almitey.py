@@ -113,8 +113,9 @@ class Almitey(object):
 
                 muscle(
                     f"{self.output_dir}/oriented_boundaries.fas",
-                    f"{self.output_dir}/oriented_boundaries_align.html"
+                    f"{self.output_dir}/boundaries_align.html"
                 )
+                cluster_output_dict['alignment_path'] = f"{self.relative_loc}/{dirname}/almitey/boundaries_align.html"
 
         return cluster_output_dict
 
