@@ -11,32 +11,45 @@ conda env create -f ace-kit.yml
 ```
 
 ## Usage
-To generate sequence logos and boundary plots for contigs in a cluster
-using the default settings simply use:
 
-``` python
-python start.py -a [acefile] -o [output_directory]
+To run almitey on all of the clusters in a repeat explorer output simply
+run the following command with the ```clustering_directory``` as the top
+level directory of the repeat explorer output, i.e. the one containing the
+seqclust subdirectory.
+
+``` bash
+python test_run.py -i [clustering_directory]
 ```
 
-This will give you the logos, plots, a fasta file with the sequence at
-the inferred boundary for each contig and a pickled list of read pairs
-where at least one of the mates is on a boundary _and_ the pair is not
-split into separate clusters. This file, which ends with the extension
-`.pkl` will be used as input for the next script.
+This will run the almitey analysis on every cluster in the output from the
+RepeatExplorer and output a HTML file (almitey_report.html) in the same
+folder where you find the your seqclust subdirectory. This report contains
+information about almitey results for each cluster and allows navigation to
+individual HTML reports, sequence logos and alignments for each cluster where
+at least one repeat boundary was found
 
 Use the following to see information about arguments to the script:
 
-```python
-python start.py --help
+``` bash
+python test_run.py --help
 ```
+
+From this help menu you will see how you can change the default arguments when
+running the analysis on your data.
+
+If you want to run the analysis on an individual cluster you should either use
+the ipython shell or write your own python script to import the Almitey class,
+for example:
 
 ``` python
-python pairs_analysis -p [pickle_file] -o [output_dir]
+from almitey import Almitey
+
+input_dir = "/home/user/clsutering/seqclust/clustering/clusters/dir_CL0045"
+output_dir = "/home/user/your_choice"
+
+runner = Almitey(input_dir, output_dir) # add other args to change defaults
+results = runner.run() # add overwrite=True if necessary
 ```
 
-The output of this script is currently the results of running the program
-einverted from the emboss package. This includes an alignment file, similar
-to what one gets when running a blast with the standard blast output format.
-There is also a fasta file with the extracted regions of the reads which
-have inverted repeats. Arguments for parameters that can be tweaked for the
-einverted program will be added, as of now they are fixed to defaults.
+By default this will not overwrite the output_dir directory, so you either have
+to delete each time or use ```runner.run(overwrite=True)```
