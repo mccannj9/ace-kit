@@ -58,6 +58,16 @@ def window(
         return view
 
 
+def count_zeros_per_position(reads):
+    counts = numpy.zeros(len(reads[0])) + len(reads)
+    for r in reads:
+        for i, b in enumerate(r):
+            if b == "0":
+                counts[i] -= 1
+    counts[counts == 0] = len(reads)
+    return counts
+
+
 def create_seqlogo_dataframe(sequences):
     seqlen = len(sequences[0])
     idx = pandas.Index(data=range(seqlen), name='pos')
@@ -69,24 +79,24 @@ def create_seqlogo_dataframe(sequences):
     for x in colors:
         df[x] = (basemat == x).sum(axis=1)
 
-    freqs = df / len(sequences)
+    nonzero_counts = count_zeros_per_position(sequences)
+    freqs = df.divide(nonzero_counts.reshape(-1, 1))
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', r'divide by zero encountered in log2')
         log_freqs = numpy.nan_to_num(numpy.log2(freqs))
 
-    # correction = (1 / numpy.log(2)) * (4/(2*len(sequences)))
-    # row_scale = numpy.log2(5) - (- (freqs * log_freqs) + correction).sum(axis=1)
     row_scale = numpy.log2(5) - (- (freqs * log_freqs)).sum(axis=1)
 
-    return freqs.multiply(row_scale, axis=0)
+    return df, freqs, freqs.multiply(row_scale, axis=0)
 
 
 def create_logo(sequences, figsize=(10, 2.5), save=None):
 
     fig, ax = pyplot.subplots(1, figsize=figsize)
 
-    df = create_seqlogo_dataframe(sequences)
+    counts, freqs, df = create_seqlogo_dataframe(sequences)
+    print(df)
 
     logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
     logo.style_xticks(anchor=0, spacing=5, rotation=45)
