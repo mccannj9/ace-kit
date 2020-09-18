@@ -1,5 +1,4 @@
 
-import os
 import re
 
 from dataclasses import dataclass
@@ -12,14 +11,20 @@ import logomaker
 from matplotlib import pyplot
 from logomaker import Logo
 
-from kit.utils import compute_end_pos, window, rc, create_seqlogo_dataframe, colors
+from kit.utils import compute_end_pos, window, create_seqlogo_dataframe, colors
+from kit.utils import sign
 from kit.html import minor_row_template
+
+regex = re.compile(
+    r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
+    r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
+)
 
 
 pyplot.style.use('bmh')
 
 StringVector = List[str]
-
+sides = ["X", "left", "right"]
 
 @dataclass
 class Read:
@@ -31,31 +36,17 @@ class Read:
     seq: str
     ctg: str
     comp: str
-    boundary: int = 0
-    side: int = 0
 
-    def _fasta(self):
-        seq = self.seq.replace("*", "")
-        if self.comp == 'C':
-            self._comp_seq()
-        return f">{self.name}_{self.f}_{self.t}_{self.boundary}\n{seq}"
+    @property
+    def end(self):
+        return self.start + self.length
 
-    def _comp_seq(self):
-        self.seq = "".join([rc[c] for c in self.seq[::-1]])
-        self.comp = 'U' if self.comp == 'C' else 'C'
-        if self.boundary:
-            self.boundary = len(self.seq) - self.boundary - 1
+    @property
+    def extent(self):
+        return range(self.start, self.end)
 
-    def _boundary_seq(self, length=30):
-        if self.side == 0:
-            return self.seq
-        return self.seq[self.boundary:self.boundary+length]
-
-    def __bool__(self):
-        return self.boundary != 0
-
-    def __mul__(self, other):
-        return self.boundary * other.boundary
+    def overlapping(self, pos):
+        return pos in self.extent
 
     def __len__(self):
         return len(self.seq)
@@ -64,56 +55,23 @@ class Read:
 ReadsVec = List[Read]
 
 
-@dataclass
-class Pair:
-    f: Read
-    r: Read
-
-    def __bool__(self):
-        return self.f * self.r != 0
-
-    def set_reference(self):
-        self.reference = self.f if self.f else self.r
-        self.objective = self.f if self.reference != self.f else self.r
-
-    def get_kmers_in_reads(self, k=7, length=30):
-        # bseq_f = self.f.seq[self.f.boundary]
-        bseq_f = self.f._boundary_seq(length=length)
-        bseq_r = self.r._boundary_seq(length=length)
-        self.f.kmers = {bseq_f[x:x+k]:x for x in range(len(bseq_f)-k+1)}
-        self.r.kmers = {bseq_r[x:x+k]:x for x in range(len(bseq_r)-k+1)}
-
-    def uncomplement_reads(self):
-        if self.f.comp == 'C':
-            self.f._comp_seq()
-        if self.r.comp == 'C':
-            self.r._comp_seq()
-
-
-regex = re.compile(
-    r"^CO CL(?P<cluster>\d+)Contig(?P<number>\d+)"
-    r" (?P<length>\d+) (?P<nreads>\d+) \d+ [UC]$"
-)
-
-
 def get_sequences_for_contig(ctg):
     seqs = []
     for i, line in enumerate(ctg.lines):
         if line.startswith('RD'):
             seq = []
             count = 1
-            l = ctg.lines[i+count]
-            # while l:= ctg.lines[i+count]:
-            while l:
-                seq.append(l)
+            cl = ctg.lines[i+count]
+            while cl:
+                seq.append(cl)
                 count += 1
-                l = ctg.lines[i+count]
+                cl = ctg.lines[i+count]
             seqs.append("".join(seq))
     return seqs
 
 
 class Contig(object):
-    def __init__(self, lines: StringVector):
+    def __init__(self, lines: StringVector) -> None:
         # just initializing values so editor doesn't complain
         self.length = 0
         self.nreads = 0
@@ -191,13 +149,14 @@ class Contig(object):
         self.unmasked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
         self.masked = numpy.zeros(shape=self.assembly_len, dtype=numpy.int64)
         for r in self.reads:
+            r.start += self.shift
             unmasked = numpy.zeros(r.length).astype(bool)
             unmasked[r.f-1:r.t-1] = True
             masked = ~unmasked
-            begin = self.shift + r.start
-            end = self.shift + r.start + r.length
-            self.unmasked[begin: end] += unmasked
-            self.masked[begin:end] += masked
+            self.unmasked[r.start: r.end] += unmasked
+            self.masked[r.start:r.end] += masked
+
+        self.masking_diff = self.unmasked - self.masked
 
         self.depth = self.unmasked + self.masked
         self.average_rd = self.depth.mean()
@@ -227,18 +186,24 @@ class Contig(object):
             idx for idx, ltr in enumerate(self.seq) if ltr == "*"
         ]
 
+    def depth_mask(self, min_depth):
+        return self.depth >= min_depth
+
     def plot_profile(self, ax, window_size=1, shift=1):
         if window_size > 1:
-            unmasked_data = window(self.unmasked, window=window_size, shift=shift).mean(axis=1)
-            masked_data = window(self.masked, window=window_size, shift=shift).mean(axis=1)
+            unmasked_data = window(
+                self.unmasked, window=window_size, shift=shift
+            ).mean(axis=1)
+            masked_data = window(
+                self.masked, window=window_size, shift=shift
+            ).mean(axis=1)
         else:
             unmasked_data = self.unmasked
             masked_data = self.masked
-        depth = unmasked_data + masked_data
 
         ax.set_ylabel('No. of Sites')
-
         ax.set_xlabel(f'Position, Window Size = {window_size}')
+
         xaxis = numpy.arange(self.min, self.max-window_size+2)
         artist1 = ax.step(
             xaxis, unmasked_data, c='firebrick', label='Unmasked'
@@ -247,22 +212,20 @@ class Contig(object):
             xaxis, masked_data, c='steelblue', label='Masked'
         )
         artist3 = ax.step(
-            xaxis, depth, c='seagreen', label='Depth'
+            xaxis, self.depth, c='seagreen', label='Depth'
         )
         ax.legend()
         return artist1, artist2, artist3
 
     def generate_figure(self, fs=(6, 4), filename=None, **kwargs):
-        fig, ax = pyplot.subplots(1, figsize=fs)
+        self.fig, ax = pyplot.subplots(1, figsize=fs)
         self.plot_profile(ax)
-        fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
+        self.fig.suptitle(f"{self.name} RD = {round(self.average_rd, 1)}")
         if filename:
-            fig.savefig(filename, **kwargs)
-            pyplot.close(fig)
-        return fig
+            self.fig.savefig(filename, **kwargs)
+            pyplot.close(self.fig)
 
     def add_candidate_switchpoint_to_fig(self, fig, candidate):
-
         ymax = self.depth.max()
         for ax in fig.axes:
             ax.vlines(self.min + candidate, 0, ymax, linestyles='dotted')
@@ -273,55 +236,117 @@ class Contig(object):
     def __len__(self):
         return self.length
 
-    def get_reads_with_position(self, pos, slope, l=30):
-        seqs = []
+    def reads_on_position(self, pos: int) -> ReadsVec:
+        overlapping_reads = []
         for r in self.reads:
-            b = r.start
-            e = r.start + r.length
-            if ((pos - self.shift) in range(b, e)):
-                p = pos - self.shift - b
-                seq = r.seq.replace("*", "-")
-                if slope > 0:
-                    seqs.append(seq[p:p+l])
-                else:
-                    seqs.append(seq[p-l+1:p+1])
-        # this removes those reads which do not have length == l
-        # otherwise dataframe is messed up
-        return [x for x in seqs if len(x) == l]
+            if r.overlapping(pos):
+                overlapping_reads.append(r)
+        return overlapping_reads
 
 
-@dataclass
 class Boundary:
-    contig: Contig
-    contig_name: str
-    pos: int
-    depth: int
-    side: int
-    rate: float
-    logo: Logo = None
-    orient: int = 0
-    seq: str = ""
+    def __init__(
+        self,
+        contig: Contig,
+        pos: int,
+        side: int,
+        rate: float,
+    ) -> None:
+        self.contig = contig
+        self.contig_name = contig.name
+        self.pos = pos
+        self.depth = self.contig.depth[self.pos]
+        self.side = side
+        self.rate = rate
+
+        # unset attributes set by instance methods
+        self.reads = None
+        self.logo = None
+        self.orient = None
+        self.seq = None
+
+        self.add_boundary_to_contig_profile_plot(contig)
 
     @property
     def name(self):
         return f"{self.contig.name}_{self.side_as_l_or_r()}"
 
-    def set_boundary_sequence(self, l=30):
+    @property
+    def slope(self):
+        return self.rate * self.side
+
+    def set_boundary_sequence(self, after: int=30) -> None:
         pos = self.pos - self.contig.shift
         if self.side == 1:
-            self.seq = self.contig.seq[pos-1:pos+l-1].replace("*", "")
+            self.seq = self.contig.seq[pos-1:pos+after-1].replace("*", "")
+            self.seq
         else:
-            self.seq = self.contig.seq[pos-l:pos].replace("*", "")
+            self.seq = self.contig.seq[pos-after:pos].replace("*", "")
 
-    def set_logo(self, l=30, figsize=(10, 2.5), save=None):
-        seqs = self.contig.get_reads_with_position(self.pos, self.side * self.rate, l=30)
+    def set_overlapping_reads(self) -> None:
+        self.reads = self.contig.reads_on_position(self.pos)
+
+    def get_boundary_seqs_from_reads(
+        self, before: int=5, after: int=30
+    ) -> StringVector:
+
+        seqs = []
+
+        if not(self.reads):
+            self.set_overlapping_reads()
+
+        for read in self.reads:
+            pos_in_read = self.pos - read.start
+            if self.slope > 0:
+                left = pos_in_read - before
+                right = pos_in_read + after
+            else:
+                left = pos_in_read - after + 1
+                right = pos_in_read + before + 1
+
+            # have to check if we need to add a padding char
+            # then extracted seqs should all have same length
+            if left < 0:
+                pad_left = "0" * abs(left)
+                left = 0
+
+            else:
+                pad_left = ""
+
+            if right > (read.length - 1):
+                pad_right = "0" * abs(right - (read.length))
+                right = read.length
+
+            else:
+                pad_right = ""
+
+            seqs.append(
+                f"{pad_left}{read.seq[left:right]}{pad_right}".replace("*", "-")
+            )
+
+        return seqs
+
+    def add_boundary_to_contig_profile_plot(self, contig: Contig) -> None:
+        ymax = contig.depth.max()
+        for ax in contig.fig.axes:
+            ax.vlines(self.pos - self.contig.shift, 0, ymax, linestyles='dotted')
+
+    def set_logo(
+        self,
+        before: int = 5,
+        after: int = 30,
+        figsize=(10, 2.5),
+        save=None
+    ) -> None:
+        seqs = self.get_boundary_seqs_from_reads()
         counts, freqs, df = create_seqlogo_dataframe(seqs)
 
         fig, ax = pyplot.subplots(1, figsize=figsize)
         self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)
         self.logo.style_xticks(anchor=0, spacing=5, rotation=45)
         self.logo.ax.set_xlim([-1, len(df)])
-        self.logo.ax.set_ylabel('information (bits)')
+        self.logo.ax.set_xlabel('Position')
+        self.logo.ax.set_ylabel('Information (bits)')
 
         if save:
             fig.savefig(save)
@@ -331,57 +356,9 @@ class Boundary:
     def side_as_l_or_r(self):
         return "l" if self.side == 1 else "r"
 
-    def boundary_seq_as_fasta(self):
-        return f">{self.contig.name}_{self.side_as_l_or_r()}\n{self.seq}"
-
-    @property
-    def _id(self):
-        return f">{self.contig.name}_{self.side_as_l_or_r()}"
-
-    def get_reads_from_boundary(self, buffer=0):
-        reads = []
-        for r in self.contig.reads:
-            b = r.start
-            e = r.start + r.length
-            # read_range = range(b, e)
-            # true_pos = self.pos - self.contig.shift
-            # contig_range = range(true_pos, true_pos + buffer)
-            # overlap = range(
-            #     max(read_range[0], contig_range[0]), max(read_range[-1], contig_range[-1])
-            # )
-            # if overlap.start < overlap.stop:
-            if ((self.pos - self.contig.shift) in range(b, e)):
-                reads.append(r)
-        return reads
-
-    def get_mate_pairs(self, reads: ReadsVec):
-        all_reads = {x.name: x for x in self.contig.reads}
-        pairs_dict = {}
-
-        for r in reads:
-            r_end = r.name[-1]
-            mate_end = "f" if r_end == "f" else "r"
-            mate_id = f"{r.name[:-1]}{mate_end}"
-            if mate_id in all_reads:
-                if r.name[:-1] not in pairs_dict:
-                    pairs_dict[r.name[:-1]] = [r, all_reads[mate_id]]
-                    pairs_dict[r.name[:-1]].sort(key=lambda x: x.name[:-1])
-
     def table_row_template(self):
         d = self.__dict__.copy()
-        d['side'] = self.side_as_l_or_r()
-        d['side'] = "left" if d['side'] == "l" else "right"
+        d['side'] = sides[int(self.side)]
         d['pos'] = self.pos - self.contig.shift
         d['rate'] = round(d['rate'], 1)
         return minor_row_template.safe_substitute(d)
-
-    def extract_seq_from_contig(self, length):
-        x = int(self.pos - self.contig.shift)
-        y = int(x + self.side * (length))
-
-        if x > y:
-            c = self.contig.seq[y:x+1].count("*")
-            return self.contig.seq[y:x+1+c].replace("*", "")
-
-        c = self.contig.seq[x:x+y].count("*")
-        return self.contig.seq[x:x+y+c].replace("*", "")

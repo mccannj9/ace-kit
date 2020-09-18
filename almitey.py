@@ -6,7 +6,8 @@ import sys
 
 from statistics import mean
 
-from kit.finder import NewSwitchpointFinder
+# from kit.finder import NewSwitchpointFinder
+from kit.finder import SwitchpointFinder
 from kit.utils import muscle
 
 from kit.html import build_html_output, major_html_template
@@ -68,7 +69,7 @@ class Almitey(object):
                 )
 
         with open(self.log_filename, 'w') as log:
-            self.finder = NewSwitchpointFinder(
+            self.finder = SwitchpointFinder(
                 self.ace_filename, outdir=self.output_dir
             )
             contigs, boundaries = self.finder.fit()
