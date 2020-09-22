@@ -95,7 +95,7 @@ def create_logo(sequences, figsize=(10, 2.5), save=None):
 
     fig, ax = pyplot.subplots(1, figsize=figsize)
 
-    counts, freqs, df = create_seqlogo_dataframe(sequences)
+    _, _, df = create_seqlogo_dataframe(sequences)
     print(df)
 
     logo = logomaker.Logo(df, color_scheme=colors, ax=ax)

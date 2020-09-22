@@ -339,7 +339,8 @@ class Boundary:
         save=None
     ) -> None:
         seqs = self.get_boundary_seqs_from_reads()
-        counts, freqs, df = create_seqlogo_dataframe(seqs)
+        # counts, freqs, df = ... can be used to align seqlogos
+        _, _, df = create_seqlogo_dataframe(seqs)
 
         fig, ax = pyplot.subplots(1, figsize=figsize)
         self.logo = logomaker.Logo(df, color_scheme=colors, ax=ax)

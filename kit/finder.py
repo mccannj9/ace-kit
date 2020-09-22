@@ -8,11 +8,11 @@ import numpy
 
 from matplotlib import pyplot
 
-# from kit.ace import AceFile, NewAceFile
 from kit.ace import AceFile
 from kit.contig import Boundary, Contig, sides
-from kit.utils import rc
+from kit.utils import rc, revcomp
 
+from ssw.lib import CSmithWaterman, default_alignment_parameters
 
 Boundaries = NewType('Boundaries', List[Boundary])
 Contigs = NewType('Contigs', List[Contig])
@@ -51,6 +51,8 @@ class SwitchpointFinder(object):
                 self.find_candidates(contig)
                 all_contigs += [contig]
                 all_boundaries += contig.boundaries
+
+        tirs = self.detect_tirs(all_contigs, **default_alignment_parameters)
 
         all_boundaries.sort(key=lambda x: x.rate, reverse=True)
         return all_contigs, all_boundaries
@@ -115,7 +117,23 @@ class SwitchpointFinder(object):
 
         return fasta_output
 
-    def estimate_TIR_length(self, boundaries: BoundaryVec, **align_params):
+    def detect_tirs(self, contigs: Contigs, **align_params):
+        results = []
+
+        for contig in contigs:
+            if len(contig.boundaries) == 2:
+                print("Check contig for TIR")
+                aligner = CSmithWaterman(debug=False)
+                aligner.set_alignment_params(**align_params)
+                result = aligner.align_sequence_pair(
+                    contig.boundaries[0].seq, revcomp(contig.boundaries[-1].seq)
+                )
+                results.append((contig, result))
+
+        return results
+
+
+    def estimate_TIR_length(self, boundaries: Boundaries, **align_params):
         orientations = set([
             b.orient for b in boundaries
         ])
