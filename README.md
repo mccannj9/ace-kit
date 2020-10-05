@@ -23,10 +23,17 @@ python test_run.py -i [clustering_directory]
 
 This will run the almitey analysis on every cluster in the output from the
 RepeatExplorer and output a HTML file (almitey_report.html) in the same
+<<<<<<< HEAD
 folder where you find your seqclust subdirectory. This report contains
 information about almitey results for each cluster and allows navigation to
 individual HTML reports, sequence logos and alignments for each cluster where
 at least one repeat boundary was found.
+=======
+folder where you find the your seqclust subdirectory. This report contains
+information about almitey results for each cluster and allows navigation to
+individual HTML reports, sequence logos and alignments for each cluster where
+at least one repeat boundary was found
+>>>>>>> 581d8c40542dcc1ef4c26bb073d9d40e366a5644
 
 Use the following to see information about arguments to the script:
 

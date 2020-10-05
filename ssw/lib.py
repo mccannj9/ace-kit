@@ -4,6 +4,8 @@ import inspect
 import ctypes
 import numpy
 
+from dataclasses import dataclass
+
 bases = ['A', 'C', 'G', 'T', 'N']
 base_to_int = {x: i for i, x in enumerate(bases)}
 int_to_base = {i: x for i, x in enumerate(bases)}
@@ -13,8 +15,35 @@ default_alignment_parameters = {
     'match': 2, 'mismatch': 2, 'gap_open': 3, 'gap_extend': 1, 'nflag': 2
 }
 
+c_to_python_translation = {
+    'nScore': 'best_score',
+    'nScore2': 'second_best_score',
+    'nQryBeg': 'query_begin',
+    'nQryEnd': 'query_end',
+    'nRefBeg': 'target_begin',
+    'nRefEnd': 'target_end',
+    'nRefEnd2': 'target_end_2',
+    'sCigar': 'raw_cigar_bytes',
+    'nCigarLen': 'cigar_length'
+}
+
 cigar_info = 'MIDNSHP=X'
 
+@dataclass
+class ResultSSW:
+    query: str
+    target: str
+    best_score: int = None
+    query_begin: int = None
+    query_end: int = None
+    target_begin: int = None
+    target_end: int = None
+    cigar_array: list = None
+    cigar_length: int = None
+    cigar_string: str = None
+    alignment_length: int = None
+    alignment_repr: str = None
+    
 
 class CProfile(ctypes.Structure):
     _fields_ = [
@@ -44,7 +73,13 @@ class CAlignmentResult(ctypes.Structure):
 
 class CSmithWaterman:
 
-    def __init__(self, path_to_libssw=None, library_filename="libssw.so", debug=True):
+    def __init__(
+        self,
+        path_to_libssw=None,
+        library_filename="libssw.so",
+        debug=True
+    ) -> None:
+
         if not(path_to_libssw):
             modframe = inspect.currentframe()
             filename = inspect.getframeinfo(modframe).filename
@@ -145,14 +180,12 @@ class CSmithWaterman:
                 if k in self.parameters:
                     self.__dict__[k] = kwargs[k]
 
-    def align_sequence_pair(self, query, target, destroy=True):
+    def align_sequence_pair(self, query, target, destroy=True) -> ResultSSW:
         if not(self.parameters_set):
             print("Please set parameters before trying to align sequences")
             return None
 
-        results_dict = {}
-        results_dict['Query'] = query
-        results_dict['Target'] = target
+        ssw_res = ResultSSW(query=query, target=target)
 
         query = seq_to_int_array(query)
         target = seq_to_int_array(target)
@@ -168,20 +201,23 @@ class CSmithWaterman:
         )
 
         for k, _ in result.contents._fields_:
-            results_dict[k] = result.contents.__getattribute__(k)
+            if c_to_python_translation[k] in ssw_res.__dict__:
+                ssw_res.__setattr__(
+                    c_to_python_translation[k], result.contents.__getattribute__(k)
+                )
 
-        # add cigar array to results dict
-        results_dict['lCigar'] = [
-            result.contents.sCigar[x] for x in range(results_dict['nCigarLen'])
+        # add cigar array to result object
+        ssw_res.cigar_array = [
+            result.contents.sCigar[x] for x in range(ssw_res.cigar_length)
         ]
 
-        build_path(results_dict)
+        build_path(ssw_res)
 
         if destroy:
             self.align_destroy(result)
             self.init_destroy(query_profile)
 
-        return results_dict
+        return ssw_res
 
 
 def seq_to_int_array(seq):
@@ -206,8 +242,7 @@ def build_score_matrix(n_elements, match_score, mismatch_score):
     matrix_in_c[:] = score_matrix.flatten()
     return matrix_in_c
 
-
-def build_path(results: dict) -> None:
+def build_path(result: ResultSSW) -> None:
     """
     build cigar string and align path from cigar returned by ssw_align
     @param  q   query sequence
@@ -221,9 +256,10 @@ def build_path(results: dict) -> None:
     sQ = 'Q: '
     sA = '   '
     sR = 'T: '
-    nQOff = results['nQryBeg']
-    nROff = results['nRefBeg']
-    for x in results['lCigar']:
+    nQOff = result.query_begin
+    nROff = result.target_begin
+
+    for x in result.cigar_array:
         n = x >> 4
         m = x & 15
         if m > 8:
@@ -233,23 +269,26 @@ def build_path(results: dict) -> None:
         sCigar += str(n) + c
 
         if c == 'M':
-            sQ += results['Query'][nQOff: nQOff+n]
+            sQ += result.query[nQOff: nQOff+n]
             sA += ''.join([
-                '|' if results['Query'][nQOff+j] == results['Target'][nROff+j] else '*' for j in range(n)
+                '|' if result.query[nQOff+j] == result.target[nROff+j] else '*' for j in range(n)
             ])
-            sR += results['Target'][nROff: nROff+n]
+            sR += result.target[nROff: nROff+n]
             nQOff += n
             nROff += n
+
         elif c == 'I':
-            sQ += results['Query'][nQOff: nQOff+n]
+            sQ += result.query[nQOff: nQOff+n]
             sA += ' ' * n
             sR += '-' * n
             nQOff += n
+
         elif c == 'D':
             sQ += '-' * n
             sA += ' ' * n
-            sR += results['Target'][nROff: nROff+n]
+            sR += result.target[nROff: nROff+n]
             nROff += n
 
-    results['sCigar'] = sCigar
-    results['sAlignment'] = "\n".join([sQ, sA, sR])
+    result.alignment_length = len(sQ) - 3 # account for printing offset
+    result.cigar_string = sCigar
+    result.alignment_repr = "\n".join([sQ, sA, sR])
