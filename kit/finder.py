@@ -1,7 +1,7 @@
 
 import os
 import itertools
-from typing import List, Tuple, NewType
+from typing import List, Tuple, NewType, TextIO
 from statistics import mean
 
 import numpy
@@ -10,7 +10,7 @@ from matplotlib import pyplot
 
 from kit.ace import AceFile
 from kit.contig import Boundary, Contig, sides
-from kit.utils import rc, revcomp
+from kit.utils import rc, revcomp, unique_kmer_distance
 
 from ssw.lib import CSmithWaterman, default_alignment_parameters
 
@@ -40,7 +40,7 @@ class SwitchpointFinder(object):
         self.mean_contig_length = None
         self.min_contig_length = None
 
-    def fit(self) -> Tuple[Contigs, Boundaries]:
+    def fit(self, log: TextIO) -> Tuple[Contigs, Boundaries]:
         all_contigs = Contigs([])
         all_boundaries = Boundaries([])
 
@@ -53,6 +53,10 @@ class SwitchpointFinder(object):
                 all_boundaries += contig.boundaries
 
         tirs = self.detect_tirs(all_contigs, **default_alignment_parameters)
+
+        for ctg, res in tirs:
+            print(ctg.name, ctg.length, res.best_score, res.alignment_length, file=log)
+            print(res.alignment_repr + "\n", file=log)
 
         all_boundaries.sort(key=lambda x: x.rate, reverse=True)
         return all_contigs, all_boundaries
@@ -125,10 +129,16 @@ class SwitchpointFinder(object):
                 print("Check contig for TIR")
                 aligner = CSmithWaterman(debug=False)
                 aligner.set_alignment_params(**align_params)
-                result = aligner.align_sequence_pair(
+                ssw_result = aligner.align_sequence_pair(
                     contig.boundaries[0].seq, revcomp(contig.boundaries[-1].seq)
                 )
-                results.append((contig, result))
+                print(unique_kmer_distance(
+                    contig.boundaries[0].seq, revcomp(contig.boundaries[-1].seq), 5
+                ))
+                print(ssw_result.alignment_repr)
+
+                if ssw_result.alignment_length >= 10:
+                    results.append((contig, ssw_result))
 
         return results
 

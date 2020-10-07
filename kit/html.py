@@ -75,7 +75,8 @@ major_table_row = """
                         $avg_boundary_score
                     </div>
                     <div class="table-body-cell">
-                        <a href="$alignment_path">alignment</a>
+                        $alignment_path
+                        <!--<a href="$alignment_path">alignment</a>-->
                     </div>
                 </div>
 """

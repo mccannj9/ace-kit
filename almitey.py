@@ -72,7 +72,7 @@ class Almitey(object):
             self.finder = SwitchpointFinder(
                 self.ace_filename, outdir=self.output_dir
             )
-            contigs, boundaries = self.finder.fit()
+            contigs, boundaries = self.finder.fit(log)
             cluster_output_dict['num_contigs'] = len(contigs)
             sorted_contigs = sorted(
                 contigs, key=lambda c: (c.nboundaries, c.boundary_rate_sum), reverse=True
@@ -116,7 +116,10 @@ class Almitey(object):
                     f"{self.output_dir}/oriented_boundaries.fas",
                     f"{self.output_dir}/boundaries_align.html"
                 )
-                cluster_output_dict['alignment_path'] = f"{self.relative_loc}/{dirname}/almitey/boundaries_align.html"
+                cluster_output_dict['alignment_path'] = f'<a href="{self.relative_loc}/{dirname}/almitey/boundaries_align.html">alignment</a>'
+
+            elif nboundaries == 1:
+                cluster_output_dict['alignment_path'] = 'alignment'
 
         return cluster_output_dict
 

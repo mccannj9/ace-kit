@@ -43,7 +43,7 @@ class ResultSSW:
     cigar_string: str = None
     alignment_length: int = None
     alignment_repr: str = None
-    
+
 
 class CProfile(ctypes.Structure):
     _fields_ = [
@@ -146,7 +146,7 @@ class CSmithWaterman:
 
         self.parameters_set = False
 
-    def set_alignment_params(self, **kwargs):
+    def set_alignment_params(self, **kwargs) -> None:
         for k in kwargs:
             if k in self.parameters and not(self.parameters[k]):
                 self.__dict__[k] = kwargs[k]
@@ -164,11 +164,11 @@ class CSmithWaterman:
 
         self.parameters_set = True
 
-    def view_alignment_params(self):
+    def view_alignment_params(self) -> None:
         for k in self.parameters:
             print(k, self.__dict__[k])
 
-    def reset_parameters(self, **kwargs):
+    def reset_parameters(self, **kwargs) -> None:
         # unset parameters and remove them as members of object
         if not(kwargs):
             for k in self.parameters:

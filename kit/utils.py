@@ -264,3 +264,16 @@ def muscle(input:str, output:str, fmt="-html", path=muscle_path):
         return e
 
     return output
+
+
+def unique_kmer_distance(s1: str, s2:str, k:int) -> float:
+    kmers1 = set([s1[x: x+k] for x in range(len(s1) - k + 1)])
+    kmers2 = set([s2[x: x+k] for x in range(len(s1) - k + 1)])
+
+    # number of unique kmers divided by total kmers
+    return len(kmers1 ^ kmers2) / len(kmers1 | kmers2)
+
+
+class Flag(object):
+    def __init__(self):
+        pass
