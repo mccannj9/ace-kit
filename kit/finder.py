@@ -85,8 +85,8 @@ class SwitchpointFinder(object):
 
         # get the idx of min and max of derivative
         deriv_mask = numpy.zeros(shape=derivatives.shape)
-        deriv_mask[derivatives.argmin()] = 1
-        deriv_mask[derivatives.argmax()] = 1
+        deriv_mask[derivatives.argmin()] = 1 if derivatives[derivatives.argmin()] < 0 else 0
+        deriv_mask[derivatives.argmax()] = 1 if derivatives[derivatives.argmin()] > 0 else 0
         cands = sign_change * contig.depth_mask(self.min_depth) * deriv_mask
         contig.generate_figure()
 
