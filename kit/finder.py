@@ -11,6 +11,7 @@ from matplotlib import pyplot
 from kit.ace import AceFile
 from kit.contig import Boundary, Contig, sides
 from kit.utils import rc, revcomp, unique_kmer_distance
+from kit.utils import first_nonzero, last_nonzero
 
 from ssw.lib import CSmithWaterman, default_alignment_parameters
 
@@ -87,6 +88,10 @@ class SwitchpointFinder(object):
         deriv_mask = numpy.zeros(shape=derivatives.shape)
         deriv_mask[derivatives.argmin()] = 1 if derivatives[derivatives.argmin()] < 0 else 0
         deriv_mask[derivatives.argmax()] = 1 if derivatives[derivatives.argmax()] > 0 else 0
+
+        if derivatives.argmin() < derivatives.argmax():
+            deriv_mask[abs(derivatives).argmin()] = 0
+
         cands = sign_change * contig.depth_mask(self.min_depth) * deriv_mask
         contig.generate_figure()
 

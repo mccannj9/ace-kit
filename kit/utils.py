@@ -274,6 +274,17 @@ def unique_kmer_distance(s1: str, s2:str, k:int) -> float:
     return len(kmers1 ^ kmers2) / len(kmers1 | kmers2)
 
 
+def first_nonzero(arr, axis, invalid_val=-1):
+    mask = arr != 0
+    return numpy.where(mask.any(axis=axis), mask.argmax(axis=axis), invalid_val)
+
+
+def last_nonzero(arr, axis, invalid_val=-1):
+    mask = arr != 0
+    val = arr.shape[axis] - numpy.flip(mask, axis=axis).argmax(axis=axis) - 1
+    return numpy.where(mask.any(axis=axis), val, invalid_val)
+
+
 class Flag(object):
     def __init__(self):
         pass
