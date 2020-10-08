@@ -89,8 +89,11 @@ class SwitchpointFinder(object):
         deriv_mask[derivatives.argmin()] = 1 if derivatives[derivatives.argmin()] < 0 else 0
         deriv_mask[derivatives.argmax()] = 1 if derivatives[derivatives.argmax()] > 0 else 0
 
-        if derivatives.argmin() < derivatives.argmax():
-            deriv_mask[abs(derivatives).argmin()] = 0
+        new_derivatives = derivatives * deriv_mask
+        if new_derivatives.argmin() < new_derivatives.argmax():
+            x = abs(new_derivatives)
+            idx = numpy.where(x != 0, x, x[x.argmax()]).argmin()
+            deriv_mask[idx] = 0
 
         cands = sign_change * contig.depth_mask(self.min_depth) * deriv_mask
         contig.generate_figure()
@@ -131,7 +134,7 @@ class SwitchpointFinder(object):
 
         for contig in contigs:
             if len(contig.boundaries) == 2:
-                print("Check contig for TIR")
+                print(f"Checking {contig.name} for TIR")
                 aligner = CSmithWaterman(debug=False)
                 aligner.set_alignment_params(**align_params)
                 ssw_result = aligner.align_sequence_pair(
