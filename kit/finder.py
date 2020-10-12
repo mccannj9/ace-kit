@@ -86,10 +86,14 @@ class SwitchpointFinder(object):
 
         # get the idx of min and max of derivative
         deriv_mask = numpy.zeros(shape=derivatives.shape)
+        # enforces criterium that min must be negative, mask diff decreasing (right bound)
         deriv_mask[derivatives.argmin()] = 1 if derivatives[derivatives.argmin()] < 0 else 0
+        # enforces criterium that max must be positive, mask diff increasing (left bound)
         deriv_mask[derivatives.argmax()] = 1 if derivatives[derivatives.argmax()] > 0 else 0
 
         new_derivatives = derivatives * deriv_mask
+        # disallow min derivative to be to the left of max derivative
+        # left bound must come before right bound, obviously
         if new_derivatives.argmin() < new_derivatives.argmax():
             x = abs(new_derivatives)
             idx = numpy.where(x != 0, x, x[x.argmax()]).argmin()
