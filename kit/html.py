@@ -78,6 +78,9 @@ major_table_row = """
                         $alignment_path
                         <!--<a href="$alignment_path">alignment</a>-->
                     </div>
+                    <div class="table-body-cell">
+                        $TIR
+                    </div>
                 </div>
 """
 
@@ -101,6 +104,9 @@ major_table_row_none = """
                     <div class="table-body-cell">
                         alignment
                     </div>
+                    <div class="table-body-cell">
+                        NO
+                    </div>
                 </div>
 """
 
@@ -119,11 +125,12 @@ major_html = """
         <div id="table">
             <div id="table-header">
                 <div class="table-header-cell">Cluster</div>
-                <div class="table-header-cell">Number of Contigs</div>
-                <div class="table-header-cell">Number of Boundaries</div>
-                <div class="table-header-cell">Average Contig Length</div>
-                <div class="table-header-cell">Average Boundary Score</div>
+                <div class="table-header-cell">No. Contigs</div>
+                <div class="table-header-cell">No. Boundaries</div>
+                <div class="table-header-cell">Avg. Contig Length</div>
+                <div class="table-header-cell">Avg. Boundary Score</div>
                 <div class="table-header-cell">Alignment</div>
+                <div class="table-header-cell">TIR?</div>
             </div>
             <div id="table-body">
                 $table_rows

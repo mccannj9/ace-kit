@@ -151,6 +151,7 @@ class SwitchpointFinder(object):
 
                 if ssw_result.alignment_length >= 10:
                     results.append((contig, ssw_result))
+                    contig.TIR = True
 
         return results
 

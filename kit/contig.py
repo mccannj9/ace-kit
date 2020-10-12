@@ -77,6 +77,7 @@ class Contig(object):
         self.nreads = 0
         self.cluster = 0
         self.number = 0
+        self.TIR = False
 
         intro = lines[0]
         self.lines = lines

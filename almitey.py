@@ -90,6 +90,13 @@ class Almitey(object):
             cluster_output_dict["contigs"] = contigs
             cluster_output_dict["boundaries"] = boundaries
 
+            for contig in contigs:
+                if contig.TIR:
+                    cluster_output_dict['TIR'] = 'YES'
+
+            if 'TIR' not in cluster_output_dict:
+                cluster_output_dict['TIR'] = 'NO'
+
             if nboundaries:
                 cluster_output_dict['avg_boundary_score'] = round(mean(
                     x.rate for x in boundaries
